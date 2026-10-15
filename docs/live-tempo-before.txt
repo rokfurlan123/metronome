@@ -1,0 +1,4 @@
+120 BPM baseline: measured 0.499996 s, expected 0.5 s
+Requested tempo 240; edit contains '122400'
+Typing 240 BPM while playing: measured 0.499897 s, expected 0.25 s
+FAIL Typing 240 BPM while playing

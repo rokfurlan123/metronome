@@ -1,0 +1,7 @@
+120 BPM baseline: measured 0.500103 s, expected 0.5 s
+Requested tempo 240; edit contains '240'
+Typing 240 BPM while playing: measured 0.249988 s, expected 0.25 s
+Requested tempo 60; edit contains '60'
+Typing 60 BPM while playing: measured 1.00007 s, expected 1 s
+Plus button while playing: measured 0.986883 s, expected 0.983607 s
+PASS actual mouse/keyboard input changes audio-clock tempo without restart

@@ -1,0 +1,24 @@
+#include <windows.h>
+101 ICON "pulse.ico"
+1 RT_MANIFEST "app.manifest"
+1 VERSIONINFO
+FILEVERSION 0,2,8,0
+PRODUCTVERSION 0,2,8,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+ BLOCK "StringFileInfo"
+ BEGIN
+  BLOCK "040904B0"
+  BEGIN
+   VALUE "FileDescription", "Pulse Metronome"
+   VALUE "ProductName", "Pulse"
+   VALUE "FileVersion", "0.2.8"
+   VALUE "ProductVersion", "0.2.8"
+  END
+ END
+ BLOCK "VarFileInfo"
+ BEGIN
+  VALUE "Translation", 0x409, 1200
+ END
+END
