@@ -4,7 +4,7 @@ A native Windows desktop metronome for steady practice, changing meters, and lay
 
 ## Run
 
-Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.1-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. The previously installed 0.3.0 remains unchanged until the new Windows update is authorized.
+Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.1-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.1\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts. Older version folders are retained.
 
 ### Overlay views
 
@@ -15,7 +15,9 @@ Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dis
 - **−** minimizes to the taskbar without stopping audio; click Pulse on the taskbar to restore. **×** or Alt+F4 closes Pulse and stops audio without an unsaved-changes prompt. Preset saving remains manual.
 - **100% / 85% / 65%** in the compact view cycles opacity, retained in both overlay sizes. Position, opacity and view choice are session-only, not preset settings.
 
-The two overlays stay above ordinary windows; the full editor is a normal window. Exclusive-fullscreen games and Windows secure screens are not supported overlay targets.
+**Known Windows startup issue:** if the bar does not stay on top after launch, click **Size** three times to return to the tiny bar; this restores topmost here. A reliable cold-launch fix remains open.
+
+The two overlays are intended to stay above ordinary windows; the full editor is a normal window. Exclusive-fullscreen games and Windows secure screens are not supported overlay targets.
 
 For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only after authorizing Windows changes**. It installs version 0.3.1 under `%LOCALAPPDATA%\Programs\Pulse\0.3.1` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
 
@@ -52,7 +54,7 @@ The build uses a locally extracted MinGW-w64 toolchain at `/home/rokdbest/tools/
 
 The Linux tests exercise the same timeline and synthesizer used by the Windows application. AddressSanitizer and UndefinedBehaviorSanitizer are enabled. LeakSanitizer is disabled because it cannot run under the tracing environment used here.
 
-The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 had a native Windows installation/launch check. Version 0.3.1 passed Linux Wine development-aware smoke tests; physical position locking, taskbar restore and mixed-DPI movement still need native Windows validation. Click-through and its global shortcut were removed in 0.3.1. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime for tiny/compact/editor size cycling, meter selection, reversible position lock, minimizing with playback, and existing editor regressions. This is a development check, not a dependency for Windows users.
+The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 had a native Windows installation/launch check. Version 0.3.1 passed Linux Wine development-aware smoke tests and native Windows installation/control checks at 300% scaling (288 DPI), including Lock/Unlock, minimize/restore and size cycling. Cold-launch topmost is unreliable on this Windows setup; a complete Size cycle restores it. Physical pointer dragging and mixed-monitor movement still need native Windows validation. Click-through and its global shortcut were removed in 0.3.1. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime for tiny/compact/editor size cycling, meter selection, reversible position lock, minimizing with playback, and existing editor regressions. This is a development check, not a dependency for Windows users.
 
 ## Design and limitations
 
