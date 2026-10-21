@@ -4,7 +4,7 @@ A native Windows desktop metronome for steady practice, changing meters, and lay
 
 ## Run
 
-Pulse 0.3.0 opens as a compact **always-on-top overlay widget** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.0-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. No Windows installation has been performed on this laptop.
+Pulse 0.3.0 opens as a compact **always-on-top overlay widget** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.0-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.0\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts.
 
 ### Overlay widget
 
@@ -52,7 +52,7 @@ The build uses a locally extracted MinGW-w64 toolchain at `/home/rokdbest/tools/
 
 The Linux tests exercise the same timeline and synthesizer used by the Windows application. AddressSanitizer and UndefinedBehaviorSanitizer are enabled. LeakSanitizer is disabled because it cannot run under the tracing environment used here.
 
-The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 has Linux Wine development-aware smoke coverage for the widget and editor, not native Windows validation. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime; pass `--hotkey-conflict` to reserve the unlock shortcut before launch and verify that Lock is safely disabled; this is a development check, not a dependency for Windows users.
+The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 has Linux Wine development-aware smoke coverage for the widget and editor, plus a native Windows installation/launch check. Physical click-through, global shortcut delivery and mixed-DPI movement still need native Windows validation. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime; pass `--hotkey-conflict` to reserve the unlock shortcut before launch and verify that Lock is safely disabled; this is a development check, not a dependency for Windows users.
 
 ## Design and limitations
 
