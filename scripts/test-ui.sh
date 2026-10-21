@@ -12,4 +12,4 @@ export DISPLAY=:0 WINEDEBUG=-all WINEPREFIX="$runtime/prefix-v3"
 export WINESERVER="$runtime/usr/lib/wine/wineserver64" WINELOADER="$runtime/usr/lib/wine/wine64"
 export WINEDLLPATH="$runtime/usr/lib/x86_64-linux-gnu/wine/x86_64-windows:$runtime/usr/lib/x86_64-linux-gnu/wine/x86_64-unix"
 export LD_LIBRARY_PATH="$runtime/usr/lib/x86_64-linux-gnu:$runtime/usr/lib/x86_64-linux-gnu/pulseaudio"
-"$runtime/usr/lib/wine/wine64" build/ui_smoke.exe 2>build/wine.log
+"$runtime/usr/lib/wine/wine64" build/ui_smoke.exe "$@" 2>build/wine.log

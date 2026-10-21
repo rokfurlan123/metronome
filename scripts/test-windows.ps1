@@ -1,6 +1,6 @@
 param([ValidateSet("ui_smoke", "live_tempo_test", "system_volume_test", "volume_boost_test", "windows_audio_audit")][string]$TestName = "ui_smoke")
 $ErrorActionPreference = 'Stop'
-$root = '\\wsl.localhost\Ubuntu\home\rokdbest\metronome'
+$root = Split-Path -Parent $PSScriptRoot
 $start = New-Object System.Diagnostics.ProcessStartInfo
 $start.FileName = Join-Path $root ("build\" + $TestName + ".exe")
 $start.WorkingDirectory = $root

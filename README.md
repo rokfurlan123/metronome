@@ -4,15 +4,20 @@ A native Windows desktop metronome for steady practice, changing meters, and lay
 
 ## Run
 
-Use the **Pulse** shortcut on your Windows desktop, or search Windows for **Pulse Metronome**. The app and shortcuts use the custom metronome icon. Version 0.2.8 is installed locally at:
+Pulse 0.3.0 opens as a compact **always-on-top overlay widget** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.0-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. No Windows installation has been performed on this laptop.
 
-```text
-%LOCALAPPDATA%\Programs\Pulse\0.2.8\Pulse.exe
-```
+### Overlay widget
 
-The shortcut launches this local executable directly. It no longer opens an executable on the WSL network share. Only Pulse's own download-zone marker is removed during installation; Windows security settings are unchanged.
+- Drag the **Pulse** header to position the widget over your practice material.
+- Enter BPM, use/hold **− / +**, or **Tap** a tempo. **Start / Stop** and the beat indicators use the existing audio-clock engine, including mixed-meter sequences and silent beats.
+- **Editor** opens the complete rhythm/practice interface. **Widget** switches back without restarting playback or discarding settings. The editor placement and widget position are remembered for this session.
+- **100% / 85% / 65%** cycles window opacity.
+- **Lock** makes the widget click-through, letting you use the application underneath. Press **Ctrl+Alt+P** anywhere to unlock it. If Windows cannot register that shortcut (for example another Pulse instance owns it), Lock is disabled so you cannot accidentally strand the widget.
+- **×** or Alt+F4 closes Pulse and stops audio without an unsaved-changes prompt. Preset saving remains manual.
 
-`dist/Pulse.exe` and `dist/Pulse-0.2.8-windows-x64.zip` are also available as portable builds for Windows 10/11 x64. This is an unsigned development build.
+The widget stays above ordinary windows; exclusive-fullscreen games and Windows secure screens are not supported overlay targets. Widget position, opacity and view choice are session-only, not preset settings. The unlock shortcut only restores mouse interaction; it does not start/stop playback globally.
+
+For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only after authorizing Windows changes**. It installs version 0.3.0 under `%LOCALAPPDATA%\Programs\Pulse\0.3.0` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
 
 ## Practice
 
@@ -34,7 +39,7 @@ The shortcut launches this local executable directly. It no longer opens an exec
 
 **Tempo always means quarter notes per minute.** At 120 BPM, a 4/4 bar takes 2 seconds, a 7/8 bar takes 1.75 seconds, and a 3/4 bar takes 1.5 seconds. Subdivisions divide the denominator beat, and accents do not change beat duration. A 6/8 bar therefore contains six eighth-note clicks; `3+3` gives two strong group accents.
 
-Press **Space** to start/stop, **T** to tap quarter notes, **Ctrl+S** to save, and **Ctrl+O** to load. Space and T are reserved for text entry while an edit field has focus. The BPM field, +/− buttons, and tap tempo stay available during playback. Clicking into the BPM field selects its number; Ctrl+A also works. Typing waits 250 ms for the complete value, while Enter, +/−, and tap tempo commit immediately. Valid changes apply at the next unrendered main beat without restarting or losing your place; subdivisions and the second pulse follow the new tempo. Explicit per-step BPM still overrides the main tempo. Meter and sequence editing remain locked until you stop. The compact window supports Windows DPI scaling. **Rhythm** and **Practice tools** are separate views; the main window has no scrolling canvas. Only a long sequence list scrolls.
+In either view, press **Space** to start/stop, **T** to tap quarter notes, **Ctrl+S** to save, and **Ctrl+O** to load. Space and T are reserved for text entry while an edit field has focus. The BPM field, +/− buttons, and tap tempo stay available during playback. Clicking into the BPM field selects its number; Ctrl+A also works. Typing waits 250 ms for the complete value, while Enter, +/−, and tap tempo commit immediately. Valid changes apply at the next unrendered main beat without restarting or losing your place; subdivisions and the second pulse follow the new tempo. Explicit per-step BPM still overrides the main tempo. Meter and sequence editing remain locked until you stop. The compact window supports Windows DPI scaling. **Rhythm** and **Practice tools** are separate views; the main window has no scrolling canvas. Only a long sequence list scrolls.
 
 ## Build and check (Linux/WSL)
 
@@ -47,7 +52,7 @@ The build uses a locally extracted MinGW-w64 toolchain at `/home/rokdbest/tools/
 
 The Linux tests exercise the same timeline and synthesizer used by the Windows application. AddressSanitizer and UndefinedBehaviorSanitizer are enabled. LeakSanitizer is disabled because it cannot run under the tracing environment used here.
 
-The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. The current version has passed on real Windows, including audio startup at zero volume, tab switching, fitting controls, and Forever. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime; this is a development check, not a dependency for Windows users.
+The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 has Linux Wine development-aware smoke coverage for the widget and editor, not native Windows validation. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime; pass `--hotkey-conflict` to reserve the unlock shortcut before launch and verify that Lock is safely disabled; this is a development check, not a dependency for Windows users.
 
 ## Design and limitations
 

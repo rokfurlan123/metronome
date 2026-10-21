@@ -7,17 +7,32 @@ std::wstring fieldText(int id) { wchar_t buffer[256]{}; SendMessageW(item(id),WM
 void set(int id,const wchar_t* s) { SendMessageW(item(id),WM_SETTEXT,0,reinterpret_cast<LPARAM>(s)); }
 void click(int id) { PostMessageW(item(id),BM_CLICK,0,0); Sleep(180); }
 void select(int id,int index,bool list=false) { SendMessageW(item(id),list?LB_SETCURSEL:CB_SETCURSEL,index,0); SendMessageW(app,WM_COMMAND,MAKEWPARAM(id,list?LBN_SELCHANGE:CBN_SELCHANGE),reinterpret_cast<LPARAM>(item(id))); Sleep(180); }
-void screenshot(const char* path) {
+void screenshot(const char* path,bool composite=false) {
     RECT r; GetWindowRect(app,&r); int w=r.right-r.left,h=r.bottom-r.top;
     HDC dc=GetDC(app),mem=CreateCompatibleDC(dc); HBITMAP bitmap=CreateCompatibleBitmap(dc,w,h); auto old=SelectObject(mem,bitmap);
     PrintWindow(app,mem,2);
+    // Wine's PrintWindow omits children. Composite their WM_PRINT output for layout inspection.
+    if(composite) for(const auto& c:controls) if(IsWindowVisible(c.hwnd)) {
+        RECT child; GetWindowRect(c.hwnd,&child); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&child),2);
+        int saved=SaveDC(mem); SetViewportOrgEx(mem,child.left,child.top,nullptr);
+        IntersectClipRect(mem,0,0,child.right-child.left,child.bottom-child.top);
+        if((GetWindowLongPtrW(c.hwnd,GWL_STYLE)&BS_TYPEMASK)==BS_OWNERDRAW && GetDlgCtrlID(c.hwnd)!=Steps) {
+            DRAWITEMSTRUCT d{}; d.CtlType=ODT_BUTTON; d.CtlID=GetDlgCtrlID(c.hwnd); d.hwndItem=c.hwnd; d.hDC=mem;
+            d.rcItem={0,0,child.right-child.left,child.bottom-child.top};
+            if(!IsWindowEnabled(c.hwnd)) d.itemState|=ODS_DISABLED;
+            drawButton(&d);
+        } else SendMessageW(c.hwnd,WM_PRINT,reinterpret_cast<WPARAM>(mem),PRF_CLIENT|PRF_ERASEBKGND|PRF_CHILDREN);
+        RestoreDC(mem,saved);
+    }
     BITMAPINFO info{}; info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER); info.bmiHeader.biWidth=w; info.bmiHeader.biHeight=-h; info.bmiHeader.biPlanes=1; info.bmiHeader.biBitCount=32; info.bmiHeader.biCompression=BI_RGB;
     std::vector<unsigned char> pixels(w*h*4); SelectObject(mem,old); GetDIBits(dc,bitmap,0,h,pixels.data(),&info,DIB_RGB_COLORS);
     BITMAPFILEHEADER header{}; header.bfType=0x4d42; header.bfOffBits=sizeof(header)+sizeof(info.bmiHeader); header.bfSize=header.bfOffBits+pixels.size();
     std::ofstream out(path,std::ios::binary); out.write(reinterpret_cast<char*>(&header),sizeof(header)); out.write(reinterpret_cast<char*>(&info.bmiHeader),sizeof(info.bmiHeader)); out.write(reinterpret_cast<char*>(pixels.data()),pixels.size());
     DeleteObject(bitmap); DeleteDC(mem); ReleaseDC(app,dc);
 }
-int main() {
+int main(int argc,char**) {
+    bool occupyHotkey=argc>1;
+    if(occupyHotkey && !RegisterHotKey(nullptr,1000,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'P')) return 2;
     std::atomic<bool> exited{false};
     std::atomic<DWORD> guiId{0};
     std::thread gui([&] { guiId=GetCurrentThreadId(); wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW); exited=true; });
@@ -25,6 +40,37 @@ int main() {
     try {
         for(int i=0;i<100&&!app;++i) { if(guiId) EnumThreadWindows(guiId,[](HWND h,LPARAM)->BOOL { wchar_t cls[64]{}; GetClassNameW(h,cls,64); if(wcscmp(cls,L"PulseMetronome")==0) { app=h; return FALSE; } return TRUE; },0); Sleep(100); }
         require(app!=nullptr,"native window launches"); Sleep(300);
+        require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0,"widget starts always on top");
+        require((GetWindowLongPtrW(app,GWL_STYLE)&WS_CAPTION)!=WS_CAPTION,"widget has no title bar");
+        RECT widgetClient; GetClientRect(app,&widgetClient);
+        require(widgetClient.right==px(WidgetWidth)&&widgetClient.bottom==px(WidgetHeight),"widget starts at compact DPI-scaled size");
+        require(IsWindowVisible(item(FullEditor))&&!IsWindowVisible(item(Beats)),"widget hides full editor controls");
+        for(int id:{Bpm,Minus,Plus,Tap,Start,FullEditor,Opacity,ClickThrough,CloseWidget,NextStep}) {
+            RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
+            require(r.left>=0&&r.top>=0&&r.right<=widgetClient.right&&r.bottom<=widgetClient.bottom,"widget control fits client area");
+        }
+        POINT header{px(24),px(20)}; ClientToScreen(app,&header);
+        require(SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))==HTCAPTION,"widget header is draggable");
+        BYTE alpha=0; DWORD alphaFlags=0;
+        for(BYTE expected:{BYTE(217),BYTE(166),BYTE(255)}) {
+            click(Opacity); require(GetLayeredWindowAttributes(app,nullptr,&alpha,&alphaFlags)&&alpha==expected,"opacity cycles 85, 65, 100 percent");
+        }
+        if(occupyHotkey) require(!IsWindowEnabled(item(ClickThrough)),"hotkey conflict disables unsafe click-through");
+        if(IsWindowEnabled(item(ClickThrough))) {
+            click(ClickThrough);
+            require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TRANSPARENT)!=0,"lock enables layered click-through");
+            SendMessageW(app,WM_HOTKEY,OverlayHotkey,0);
+            require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TRANSPARENT)==0,"unlock hotkey handler restores mouse interaction");
+        } else std::cout<<"SKIP hotkey registration unavailable; unsafe locking disabled"<<std::endl;
+        SetForegroundWindow(app); Sleep(250); screenshot("docs/widget.bmp",true);
+        click(FullEditor);
+        require((GetWindowLongPtrW(app,GWL_EXSTYLE)&(WS_EX_TOPMOST|WS_EX_LAYERED|WS_EX_TRANSPARENT))==0,"editor restores normal window styles");
+        require(IsWindowVisible(item(Beats))&&!IsWindowVisible(item(FullEditor)),"editor controls restored");
+        RECT editorRect; GetWindowRect(app,&editorRect);
+        click(Overlay); click(Plus); require(fieldText(Bpm)==L"121","widget plus changes tempo");
+        click(Minus); click(FullEditor);
+        RECT restored; GetWindowRect(app,&restored);
+        require(EqualRect(&editorRect,&restored),"editor placement restored after widget round trip");
         require(fieldText(102)==L"120","default tempo 120"); require(!IsWindowEnabled(item(112)),"standard mode disables sequence list");
         select(103,1); require(IsWindowEnabled(item(112)),"sequence mode enables steps"); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==3,"example has three steps");
         select(112,1,true); require(fieldText(104)==L"7"&&fieldText(106)==L"2+2+3","selecting 7/8 loads grouping");
@@ -42,6 +88,11 @@ int main() {
             require(fieldText(Start).find(L"Stop")!=std::wstring::npos,"playback starts");
             require(IsWindowEnabled(item(Bpm))&&IsWindowEnabled(item(Plus))&&IsWindowEnabled(item(Minus))&&IsWindowEnabled(item(Tap)),"all tempo controls remain enabled during playback");
             require(!IsWindowEnabled(item(Beats)),"structural editing stays locked during playback");
+            click(Overlay);
+            require(fieldText(Start)==L"Stop"&&IsWindowEnabled(item(FullEditor))&&IsWindowEnabled(item(Opacity)),"widget conversion keeps playback and widget controls enabled");
+            require(!IsWindowEnabled(item(Beats)),"switching view does not unlock structural edits");
+            click(Opacity); click(FullEditor);
+            require(fieldText(Start).find(L"Stop")!=std::wstring::npos,"returning to editor preserves playback");
             set(Bpm,L"180"); Sleep(650);
             require(fieldText(Bpm)==L"180"&&fieldText(Start).find(L"Stop")!=std::wstring::npos,"typed live tempo keeps playback running");
             click(Plus); require(fieldText(Bpm)==L"181","plus changes live tempo");
@@ -77,5 +128,5 @@ int main() {
         require(exited,"unsaved practice closes cleanly without a confirmation dialog");
     } catch(const std::exception& e) { std::cerr<<"FAIL "<<e.what()<<std::endl; result=1; }
     if(result) ExitProcess(1);
-    gui.join(); return result;
+    gui.join(); if(occupyHotkey) UnregisterHotKey(nullptr,1000); return result;
 }

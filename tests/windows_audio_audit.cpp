@@ -64,7 +64,7 @@ int main(int argc,char** argv) {
     std::thread gui([]{wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW);});
     int result=0;
     try {
-        for(int i=0;i<100;++i) { if(window&&control(Accents))break;Sleep(50); } Sleep(300);
+        for(int i=0;i<100;++i) { if(window&&control(Accents))break;Sleep(50); } Sleep(300); SendMessageW(control(FullEditor),BM_CLICK,0,0);
         AuditCom<IMMDeviceEnumerator> enumerator; AuditCom<IMMDevice> device;
         checkAudit(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,__uuidof(IMMDeviceEnumerator),enumerator.address()),"enumerator");
         checkAudit(enumerator->GetDefaultAudioEndpoint(eRender,eMultimedia,&device.p),"endpoint");

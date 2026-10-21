@@ -35,7 +35,7 @@ int main() {
     int result=0;
     try {
         for(int i=0;i<100;++i) { if(window&&control(VolumeSlider)) break; Sleep(50); }
-        Sleep(500); SetForegroundWindow(window); Sleep(200);
+        Sleep(500); SendMessageW(control(FullEditor),BM_CLICK,0,0); SetForegroundWindow(window); Sleep(200);
         originalProc=reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window,GWLP_WNDPROC,reinterpret_cast<LONG_PTR>(observedBoost)));
         SendMessageW(control(ToolsTab),BM_CLICK,0,0); Sleep(200);
         require(IsWindowVisible(control(VolumeSlider)),"boost slider visible in Practice tools");

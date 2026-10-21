@@ -20,6 +20,8 @@ public class PulseVerify {
 }
 '@
 $h = $app.MainWindowHandle
+# Open the full editor before inspecting Practice tools (widget starts by default).
+[void][PulseVerify]::SendMessage($h, 0x111, [IntPtr]133, [IntPtr]::Zero)
 [void][PulseVerify]::SendMessage($h, 0x111, [IntPtr]128, [IntPtr]::Zero)
 $checkbox = [PulseVerify]::GetDlgItem($h,129)
 if (-not [PulseVerify]::IsWindowVisible($checkbox)) { throw 'Accent checkbox is not visible.' }

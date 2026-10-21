@@ -52,7 +52,7 @@ int main() {
     std::atomic<bool> ready=false;
     std::thread gui([&]{ready=true;wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW);});
     while(!ready||!window||!control(Start)) Sleep(50);
-    Sleep(400);
+    Sleep(400); SendMessageW(control(FullEditor),BM_CLICK,0,0);
     baseProc=reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window,GWLP_WNDPROC,reinterpret_cast<LONG_PTR>(observed)));
     try {
         SetForegroundWindow(window); Sleep(200);

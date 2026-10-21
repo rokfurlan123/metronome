@@ -9,7 +9,7 @@ int main() {
     int result=0;
     try {
         for(int i=0;i<100;++i) { if(window&&control(SystemVolumeSlider)) break; Sleep(50); }
-        Sleep(500); SetForegroundWindow(window); Sleep(200);
+        Sleep(500); SendMessageW(control(FullEditor),BM_CLICK,0,0); SetForegroundWindow(window); Sleep(200);
         require(IsWindowVisible(control(SystemVolumeSlider))&&IsWindowEnabled(control(SystemVolumeSlider)),"Windows volume slider visible and enabled");
         require(std::abs(SendMessageW(control(SystemVolumeSlider),TBM_GETPOS,0,0)-std::lround(original*100))<=1,"slider starts at existing system volume");
         // Use low levels, preserve mute, and restore the user's level before exiting.
