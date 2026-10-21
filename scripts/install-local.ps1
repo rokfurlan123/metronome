@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $root 'dist\Pulse.exe'
-$folder = Join-Path $env:LOCALAPPDATA 'Programs\Pulse\0.3.0'
+$folder = Join-Path $env:LOCALAPPDATA 'Programs\Pulse\0.3.1'
 $target = Join-Path $folder 'Pulse.exe'
 $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
 New-Item -ItemType Directory -Path $folder -Force | Out-Null

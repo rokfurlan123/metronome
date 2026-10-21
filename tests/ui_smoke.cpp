@@ -30,9 +30,7 @@ void screenshot(const char* path,bool composite=false) {
     std::ofstream out(path,std::ios::binary); out.write(reinterpret_cast<char*>(&header),sizeof(header)); out.write(reinterpret_cast<char*>(&info.bmiHeader),sizeof(info.bmiHeader)); out.write(reinterpret_cast<char*>(pixels.data()),pixels.size());
     DeleteObject(bitmap); DeleteDC(mem); ReleaseDC(app,dc);
 }
-int main(int argc,char**) {
-    bool occupyHotkey=argc>1;
-    if(occupyHotkey && !RegisterHotKey(nullptr,1000,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'P')) return 2;
+int main() {
     std::atomic<bool> exited{false};
     std::atomic<DWORD> guiId{0};
     std::thread gui([&] { guiId=GetCurrentThreadId(); wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW); exited=true; });
@@ -42,31 +40,55 @@ int main(int argc,char**) {
         require(app!=nullptr,"native window launches"); Sleep(300);
         require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0,"widget starts always on top");
         require((GetWindowLongPtrW(app,GWL_STYLE)&WS_CAPTION)!=WS_CAPTION,"widget has no title bar");
-        RECT widgetClient; GetClientRect(app,&widgetClient);
-        require(widgetClient.right==px(WidgetWidth)&&widgetClient.bottom==px(WidgetHeight),"widget starts at compact DPI-scaled size");
-        require(IsWindowVisible(item(FullEditor))&&!IsWindowVisible(item(Beats)),"widget hides full editor controls");
-        for(int id:{Bpm,Minus,Plus,Tap,Start,FullEditor,Opacity,ClickThrough,CloseWidget,NextStep}) {
+        RECT tinyClient; GetClientRect(app,&tinyClient);
+        require(tinyClient.right==px(TinyWidth)&&tinyClient.bottom==px(TinyHeight),"starts as a tiny DPI-scaled bar");
+        require(!IsWindowVisible(item(FullEditor))&&IsWindowVisible(item(Meter)),"tiny bar shows meter without full editor");
+        for(int id:{Bpm,Meter,Start,PositionLock,MinimizeWidget,CycleView,CloseWidget}) {
             RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
-            require(r.left>=0&&r.top>=0&&r.right<=widgetClient.right&&r.bottom<=widgetClient.bottom,"widget control fits client area");
+            require(r.left>=0&&r.top>=0&&r.right<=tinyClient.right&&r.bottom<=tinyClient.bottom,"tiny control fits client area");
         }
-        POINT header{px(24),px(20)}; ClientToScreen(app,&header);
-        require(SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))==HTCAPTION,"widget header is draggable");
+        require(SendMessageW(item(Meter),CB_GETCOUNT,0,0)==128,"meter dropdown supports 1-32 beats and all four denominators");
+        select(Meter,26); // 7/8
+        require(fieldText(Beats)==L"7"&&fieldText(Groups)==L"7","tiny meter selection updates editor and resets obsolete grouping");
+        select(Meter,127); // 32/16
+        require(fieldText(Beats)==L"32"&&choice(Unit)==3,"tiny meter supports 32/16 boundary");
+        select(Meter,13); // 4/4
+        require(fieldText(Beats)==L"4","tiny meter can return to 4/4");
+        POINT header{px(12),px(20)}; ClientToScreen(app,&header);
+        require(SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))==HTCAPTION,"tiny grip is draggable");
+        click(PositionLock);
+        require(fieldText(PositionLock)==L"Unlock"&&IsWindowEnabled(item(PositionLock)),"locked bar keeps unlock button enabled");
+        require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TRANSPARENT)==0,"position lock never makes controls click-through");
+        require(SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))!=HTCAPTION,"lock disables drag hit-testing");
+        click(PositionLock);
+        require(fieldText(PositionLock)==L"Lock"&&SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))==HTCAPTION,"same button unlocks dragging again");
+        click(MinimizeWidget); require(IsIconic(app),"minimize button minimizes bar");
+        ShowWindow(app,SW_RESTORE); Sleep(200);
+        require(!IsIconic(app)&&IsWindowVisible(item(Start)),"bar can be restored from taskbar");
+        screenshot("docs/tiny-bar.bmp",true);
+        click(CycleView); // compact overlay
+        RECT widgetClient; GetClientRect(app,&widgetClient);
+        require(widgetClient.right==px(WidgetWidth)&&widgetClient.bottom==px(WidgetHeight),"Size cycles tiny to compact overlay");
+        require(IsWindowVisible(item(FullEditor))&&!IsWindowVisible(item(Meter)),"compact overlay controls restored");
+        for(int id:{Bpm,Minus,Plus,Tap,Start,FullEditor,Opacity,PositionLock,CloseWidget,NextStep,MinimizeWidget,CycleView}) {
+            RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
+            require(r.left>=0&&r.top>=0&&r.right<=widgetClient.right&&r.bottom<=widgetClient.bottom,"compact control fits client area");
+        }
         BYTE alpha=0; DWORD alphaFlags=0;
         for(BYTE expected:{BYTE(217),BYTE(166),BYTE(255)}) {
             click(Opacity); require(GetLayeredWindowAttributes(app,nullptr,&alpha,&alphaFlags)&&alpha==expected,"opacity cycles 85, 65, 100 percent");
         }
-        if(occupyHotkey) require(!IsWindowEnabled(item(ClickThrough)),"hotkey conflict disables unsafe click-through");
-        if(IsWindowEnabled(item(ClickThrough))) {
-            click(ClickThrough);
-            require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TRANSPARENT)!=0,"lock enables layered click-through");
-            SendMessageW(app,WM_HOTKEY,OverlayHotkey,0);
-            require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TRANSPARENT)==0,"unlock hotkey handler restores mouse interaction");
-        } else std::cout<<"SKIP hotkey registration unavailable; unsafe locking disabled"<<std::endl;
+        click(PositionLock); click(PositionLock);
+        require(fieldText(PositionLock)==L"Lock","compact lock is also reversibly clickable");
         SetForegroundWindow(app); Sleep(250); screenshot("docs/widget.bmp",true);
-        click(FullEditor);
+        click(CycleView);
         require((GetWindowLongPtrW(app,GWL_EXSTYLE)&(WS_EX_TOPMOST|WS_EX_LAYERED|WS_EX_TRANSPARENT))==0,"editor restores normal window styles");
+        for(int i=0;i<40&&!IsWindowVisible(item(Beats));++i) Sleep(100);
         require(IsWindowVisible(item(Beats))&&!IsWindowVisible(item(FullEditor)),"editor controls restored");
         RECT editorRect; GetWindowRect(app,&editorRect);
+        click(CycleView); GetClientRect(app,&tinyClient);
+        require(tinyClient.bottom==px(TinyHeight),"Size cycles full editor back to tiny bar");
+        click(CycleView); click(CycleView);
         click(Overlay); click(Plus); require(fieldText(Bpm)==L"121","widget plus changes tempo");
         click(Minus); click(FullEditor);
         RECT restored; GetWindowRect(app,&restored);
@@ -74,6 +96,12 @@ int main(int argc,char**) {
         require(fieldText(102)==L"120","default tempo 120"); require(!IsWindowEnabled(item(112)),"standard mode disables sequence list");
         select(103,1); require(IsWindowEnabled(item(112)),"sequence mode enables steps"); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==3,"example has three steps");
         select(112,1,true); require(fieldText(104)==L"7"&&fieldText(106)==L"2+2+3","selecting 7/8 loads grouping");
+        click(CycleView); // full -> tiny
+        require(choice(Meter)==26,"tiny dropdown reflects selected sequence meter");
+        select(Meter,27); // 7/16: keep 2+2+3 and repeat count
+        require(fieldText(Groups)==L"2+2+3"&&fieldText(Repeats)==L"2","changing denominator preserves sequence grouping and repeats");
+        select(Meter,26);
+        click(CycleView); click(CycleView);
         set(106,L"3+2+2"); click(116); require(fieldText(106)==L"3+2+2","accent changes apply");
         click(115); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==4,"add step");
         click(118); require(SendMessageW(item(112),LB_GETCURSEL,0,0)==1,"move step up");
@@ -91,7 +119,14 @@ int main(int argc,char**) {
             click(Overlay);
             require(fieldText(Start)==L"Stop"&&IsWindowEnabled(item(FullEditor))&&IsWindowEnabled(item(Opacity)),"widget conversion keeps playback and widget controls enabled");
             require(!IsWindowEnabled(item(Beats)),"switching view does not unlock structural edits");
-            click(Opacity); click(FullEditor);
+            click(CycleView); // full editor
+            click(CycleView); // tiny
+            require(fieldText(Start)==L"Stop"&&!IsWindowEnabled(item(Meter)),"tiny bar retains playback and locks structural meter edits");
+            click(PositionLock); click(PositionLock);
+            require(fieldText(PositionLock)==L"Lock","lock can be clicked twice during playback");
+            click(MinimizeWidget); require(IsIconic(app)&&fieldText(Start)==L"Stop","minimizing keeps playback running");
+            ShowWindow(app,SW_RESTORE); Sleep(200);
+            click(CycleView); click(Opacity); click(FullEditor);
             require(fieldText(Start).find(L"Stop")!=std::wstring::npos,"returning to editor preserves playback");
             set(Bpm,L"180"); Sleep(650);
             require(fieldText(Bpm)==L"180"&&fieldText(Start).find(L"Stop")!=std::wstring::npos,"typed live tempo keeps playback running");
@@ -128,5 +163,5 @@ int main(int argc,char**) {
         require(exited,"unsaved practice closes cleanly without a confirmation dialog");
     } catch(const std::exception& e) { std::cerr<<"FAIL "<<e.what()<<std::endl; result=1; }
     if(result) ExitProcess(1);
-    gui.join(); if(occupyHotkey) UnregisterHotKey(nullptr,1000); return result;
+    gui.join(); return result;
 }

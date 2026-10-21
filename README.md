@@ -4,20 +4,20 @@ A native Windows desktop metronome for steady practice, changing meters, and lay
 
 ## Run
 
-Pulse 0.3.0 opens as a compact **always-on-top overlay widget** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.0-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.0\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts.
+Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.1-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. The previously installed 0.3.0 remains unchanged until the new Windows update is authorized.
 
-### Overlay widget
+### Overlay views
 
-- Drag the **Pulse** header to position the widget over your practice material.
-- Enter BPM, use/hold **− / +**, or **Tap** a tempo. **Start / Stop** and the beat indicators use the existing audio-clock engine, including mixed-meter sequences and silent beats.
-- **Editor** opens the complete rhythm/practice interface. **Widget** switches back without restarting playback or discarding settings. The editor placement and widget position are remembered for this session.
-- **100% / 85% / 65%** cycles window opacity.
-- **Lock** makes the widget click-through, letting you use the application underneath. Press **Ctrl+Alt+P** anywhere to unlock it. If Windows cannot register that shortcut (for example another Pulse instance owns it), Lock is disabled so you cannot accidentally strand the widget.
-- **×** or Alt+F4 closes Pulse and stops audio without an unsaved-changes prompt. Preset saving remains manual.
+- **Tiny bar:** drag the dotted grip; edit BPM; choose a meter; use a single **Start/Stop** button, **Lock/Unlock**, **−** (minimize), **Size**, or **×** (close).
+- **Size** cycles **tiny bar → compact overlay → full editor → tiny bar** without stopping playback or discarding settings. The compact overlay retains beat indicators, held +/−, tap tempo, next step, opacity and a direct Editor button. The full editor's Widget button opens the compact overlay.
+- The tiny **meter dropdown** offers 1–32 beats with /2, /4, /8 or /16. It updates the standard meter or the selected sequence step. Changing the beat count resets obsolete accent groups to a first-beat accent; changing only the denominator keeps grouping/repeats/step tempo. During playback it displays the active meter and is disabled, matching the existing structural-editing policy. Stop playback to change meter.
+- **Lock fixes position only.** All controls remain clickable—including the same button, now labelled **Unlock**. It never enables click-through and needs no global shortcut. Lock state follows the overlay between sizes.
+- **−** minimizes to the taskbar without stopping audio; click Pulse on the taskbar to restore. **×** or Alt+F4 closes Pulse and stops audio without an unsaved-changes prompt. Preset saving remains manual.
+- **100% / 85% / 65%** in the compact view cycles opacity, retained in both overlay sizes. Position, opacity and view choice are session-only, not preset settings.
 
-The widget stays above ordinary windows; exclusive-fullscreen games and Windows secure screens are not supported overlay targets. Widget position, opacity and view choice are session-only, not preset settings. The unlock shortcut only restores mouse interaction; it does not start/stop playback globally.
+The two overlays stay above ordinary windows; the full editor is a normal window. Exclusive-fullscreen games and Windows secure screens are not supported overlay targets.
 
-For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only after authorizing Windows changes**. It installs version 0.3.0 under `%LOCALAPPDATA%\Programs\Pulse\0.3.0` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
+For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only after authorizing Windows changes**. It installs version 0.3.1 under `%LOCALAPPDATA%\Programs\Pulse\0.3.1` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
 
 ## Practice
 
@@ -52,7 +52,7 @@ The build uses a locally extracted MinGW-w64 toolchain at `/home/rokdbest/tools/
 
 The Linux tests exercise the same timeline and synthesizer used by the Windows application. AddressSanitizer and UndefinedBehaviorSanitizer are enabled. LeakSanitizer is disabled because it cannot run under the tracing environment used here.
 
-The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 has Linux Wine development-aware smoke coverage for the widget and editor, plus a native Windows installation/launch check. Physical click-through, global shortcut delivery and mixed-DPI movement still need native Windows validation. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime; pass `--hotkey-conflict` to reserve the unlock shortcut before launch and verify that Lock is safely disabled; this is a development check, not a dependency for Windows users.
+The optional `tests/ui_smoke.cpp` driver builds the same app source into a test harness and exercises its native Windows controls. Earlier releases passed on real Windows. Version 0.3.0 had a native Windows installation/launch check. Version 0.3.1 passed Linux Wine development-aware smoke tests; physical position locking, taskbar restore and mixed-DPI movement still need native Windows validation. Click-through and its global shortcut were removed in 0.3.1. `scripts/test-windows.ps1` runs that harness on Windows; all compilation stays in Linux. `scripts/test-ui.sh` uses the local test runtime for tiny/compact/editor size cycling, meter selection, reversible position lock, minimizing with playback, and existing editor regressions. This is a development check, not a dependency for Windows users.
 
 ## Design and limitations
 

@@ -32,3 +32,7 @@ The repository was cloned into `/home/rokdbest/projects/metronome`. Downloaded t
 Restored Wine 9.0~repack-4build3 locally under `/home/rokdbest/tools/pulse-test` using extracted `wine64`, `libwine`, `fonts-wine`, `libz-mingw-w64`, and missing runtime dependency packages. Downloads are retained in that directory's `packages/`. Updated only the extracted `usr/lib/wine/wineserver` wrapper to reference this local root; copied the package's x64 `zlib1.dll` into the Wine DLL directory and disposable Linux prefix's system32, as above. Tests use the existing WSL Linux display and require permission for Wine's local Unix socket outside the restricted sandbox. No native Windows app was launched.
 
 `scripts/test-ui.sh --hotkey-conflict` reserves Ctrl+Alt+P in the harness before starting the GUI, to verify that unsafe click-through is disabled when shortcut registration fails. Widget layout composites are development evidence, not physical desktop screenshots or native Windows validation.
+
+## Pulse 0.3.1 test change
+
+Click-through/global-hotkey behavior has been replaced by reversible position locking. The current UI harness no longer uses `--hotkey-conflict`; the earlier shortcut-conflict instructions apply only to 0.3.0. Use `scripts/test-ui.sh` for current tiny-bar meter, lock, minimize and view-cycle coverage. Existing Linux toolchain versions and paths are unchanged.

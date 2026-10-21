@@ -18,22 +18,27 @@
 
 namespace {
 const COLORREF BG = RGB(244,246,248), PANEL = RGB(255,255,255), INK = RGB(30,43,50), MUTED = RGB(91,108,116), LINE = RGB(226,232,235), TEAL = RGB(12,110,93);
-enum Id { Start=100, Tap, Bpm, Mode, Beats, Unit, Groups, Subdivision, Poly, Mute, Volume, Sound, Steps, Repeats, StepTempo, Add, Apply, Remove, Up, Down, Save, Load, Example, Minus, Plus, Forever, NextStep, RhythmTab, ToolsTab, Accents, SystemVolumeSlider, VolumeSlider, Overlay, FullEditor, Opacity, ClickThrough, CloseWidget };
+enum Id { Start=100, Tap, Bpm, Mode, Beats, Unit, Groups, Subdivision, Poly, Mute, Volume, Sound, Steps, Repeats, StepTempo, Add, Apply, Remove, Up, Down, Save, Load, Example, Minus, Plus, Forever, NextStep, RhythmTab, ToolsTab, Accents, SystemVolumeSlider, VolumeSlider, Overlay, FullEditor, Opacity, PositionLock, CloseWidget, MinimizeWidget, CycleView, Meter };
 struct Control { HWND hwnd; int x,y,w,h; };
 HWND window;
 std::vector<Control> controls;
 HFONT font, smallFont, titleFont, numberFont, beatFont;
 HBRUSH bgBrush, panelBrush;
 float scale = 1;
-bool toolsPage = false, overlayMode = false, clickThrough = false, overlayHotkey = false;
+bool toolsPage = false, overlayMode = false, positionLocked = false;
+int viewMode = 2; // 0: tiny bar, 1: compact overlay, 2: full editor
 int opacityIndex = 0;
 constexpr BYTE overlayAlphas[]{255,217,166};
-constexpr int OverlayHotkey = 1, WidgetWidth = 400, WidgetHeight = 248;
+constexpr int WidgetWidth = 400, WidgetHeight = 248, TinyWidth = 410, TinyHeight = 44;
+int overlayWidth() { return viewMode==0?TinyWidth:WidgetWidth; }
+int overlayHeight() { return viewMode==0?TinyHeight:WidgetHeight; }
 WINDOWPLACEMENT fullPlacement{};
 RECT widgetRect{};
 void arrange();
 void visibility();
-void setOverlay(bool enabled);
+void setView(int next);
+void setOverlay(bool enabled) { setView(enabled?1:2); }
+void syncMeter();
 pulse::Settings settings;
 Audio audio;
 int selected = 0, currentBeat = -1, currentStep = 0, currentRepeat = 0;
@@ -97,7 +102,7 @@ void acceptVolume(bool restoreInvalid=false) {
     }
 }
 void error(const std::exception& e) { MessageBoxW(window,widen(e.what()).c_str(),L"Check your rhythm",MB_OK|MB_ICONINFORMATION); }
-void title() { SetWindowTextW(window,dirty?L"Pulse 0.3.0 • unsaved changes":L"Pulse 0.3.0 — Metronome & mixed meters"); }
+void title() { SetWindowTextW(window,dirty?L"Pulse 0.3.1 • unsaved changes":L"Pulse 0.3.1 — Metronome & mixed meters"); }
 void changed() { dirty=true; title(); }
 HWND make(const wchar_t* cls, const wchar_t* label, int id,int x,int y,int w,int h,DWORD style) {
     HWND c=CreateWindowExW(0,cls,label,WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|style,px(x),px(y),px(w),px(h),window,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),GetModuleHandleW(nullptr),nullptr);
@@ -187,8 +192,14 @@ void editor() {
     for(int id:{Steps,StepTempo,Add,Remove,Up,Down,Forever}) EnableWindow(control(id),settings.sequence&&!playing);
     EnableWindow(control(Repeats),settings.sequence&&!playing&&b.repeats!=0);
     EnableWindow(control(NextStep),playing&&settings.sequence);
-    visibility();
+    syncMeter(); visibility();
     populating=false; InvalidateRect(window,nullptr,FALSE);
+}
+void syncMeter() {
+    const auto& b=settings.sequence?settings.bars[playing?currentStep:selected]:settings.simple;
+    int unit=b.unit==2?0:b.unit==4?1:b.unit==8?2:3;
+    choose(Meter,(b.beats-1)*4+unit);
+    EnableWindow(control(Meter),!playing);
 }
 void populate() {
     populating=true;
@@ -213,11 +224,11 @@ void stop() {
 void toggle() {
     if(playing) { stop(); return; }
     commit(); currentBeat=-1; currentStep=0; currentRepeat=0; playing=true;
-    for(auto& c:controls) if(GetDlgCtrlID(c.hwnd)!=Overlay&&GetDlgCtrlID(c.hwnd)!=FullEditor&&GetDlgCtrlID(c.hwnd)!=Opacity&&GetDlgCtrlID(c.hwnd)!=ClickThrough&&GetDlgCtrlID(c.hwnd)!=CloseWidget&&GetDlgCtrlID(c.hwnd)!=Start&&GetDlgCtrlID(c.hwnd)!=NextStep&&GetDlgCtrlID(c.hwnd)!=RhythmTab&&GetDlgCtrlID(c.hwnd)!=ToolsTab&&GetDlgCtrlID(c.hwnd)!=Bpm&&GetDlgCtrlID(c.hwnd)!=Minus&&GetDlgCtrlID(c.hwnd)!=Plus&&GetDlgCtrlID(c.hwnd)!=Tap&&GetDlgCtrlID(c.hwnd)!=Accents&&GetDlgCtrlID(c.hwnd)!=SystemVolumeSlider&&GetDlgCtrlID(c.hwnd)!=Volume&&GetDlgCtrlID(c.hwnd)!=VolumeSlider&&GetDlgCtrlID(c.hwnd)!=Sound) EnableWindow(c.hwnd,FALSE);
+    for(auto& c:controls) if(GetDlgCtrlID(c.hwnd)!=MinimizeWidget&&GetDlgCtrlID(c.hwnd)!=CycleView&&GetDlgCtrlID(c.hwnd)!=Overlay&&GetDlgCtrlID(c.hwnd)!=FullEditor&&GetDlgCtrlID(c.hwnd)!=Opacity&&GetDlgCtrlID(c.hwnd)!=PositionLock&&GetDlgCtrlID(c.hwnd)!=CloseWidget&&GetDlgCtrlID(c.hwnd)!=Start&&GetDlgCtrlID(c.hwnd)!=NextStep&&GetDlgCtrlID(c.hwnd)!=RhythmTab&&GetDlgCtrlID(c.hwnd)!=ToolsTab&&GetDlgCtrlID(c.hwnd)!=Bpm&&GetDlgCtrlID(c.hwnd)!=Minus&&GetDlgCtrlID(c.hwnd)!=Plus&&GetDlgCtrlID(c.hwnd)!=Tap&&GetDlgCtrlID(c.hwnd)!=Accents&&GetDlgCtrlID(c.hwnd)!=SystemVolumeSlider&&GetDlgCtrlID(c.hwnd)!=Volume&&GetDlgCtrlID(c.hwnd)!=VolumeSlider&&GetDlgCtrlID(c.hwnd)!=Sound) EnableWindow(c.hwnd,FALSE);
     EnableWindow(control(NextStep),settings.sequence);
     text(Start,overlayMode?L"Stop":L"Stop   [Space]"); status(L"Playing. Change BPM, use + / −, or tap a new tempo at any time.");
     try { audio.start(window,settings); } catch(...) { stop(); throw; }
-    SetFocus(control(Start));
+    syncMeter(); SetFocus(control(Start));
 }
 void tap() {
     double now=std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -254,7 +265,11 @@ void box(HDC dc,int x,int y,int w,int h,COLORREF color,int radius=16) {
 }
 void paintWidget(HDC dc) {
     RECT r; GetClientRect(window,&r); FillRect(dc,&r,bgBrush);
-    drawText(dc,L"Pulse",16,8,125,32,beatFont,TEAL);
+    if(viewMode==0) {
+        drawText(dc,positionLocked?L"•":L"⋮",4,4,22,34,beatFont,positionLocked?TEAL:MUTED,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        return;
+    }
+    drawText(dc,L"Pulse",16,8,96,32,beatFont,TEAL);
     drawText(dc,L"BPM",16,44,100,18,smallFont,MUTED);
     const auto& b=settings.sequence?settings.bars[playing?currentStep:selected]:settings.simple;
     drawText(dc,std::to_wstring(b.beats)+L"/"+std::to_wstring(b.unit)+(settings.sequence?L" · Step "+std::to_wstring((playing?currentStep:selected)+1):L""),244,48,140,24,font,INK);
@@ -272,7 +287,7 @@ void paintWidget(HDC dc) {
     if(playing&&b.bpm) hint+=L" · Step tempo "+std::to_wstring(b.bpm)+L" BPM";
     if(playing&&currentSilent) hint+=L" · Silent beat";
     drawText(dc,hint,16,184,248,22,smallFont,TEAL);
-    drawText(dc,clickThrough?L"Click-through · Ctrl+Alt+P to unlock":overlayHotkey?L"Drag header · Ctrl+Alt+P unlocks click-through":L"Drag header · Click-through shortcut unavailable",16,218,368,22,smallFont,MUTED);
+    drawText(dc,positionLocked?L"Position locked · click Unlock to move":L"Drag header · Lock fixes position, not clicks",16,218,368,22,smallFont,MUTED);
 }
 void paint(HDC dc) {
     if(overlayMode) { paintWidget(dc); return; }
@@ -348,6 +363,8 @@ void drawButton(DRAWITEMSTRUCT* d) {
 void command(int id,int code) {
     if(populating) return;
     if(code==BN_CLICKED) {
+        if(id==CycleView) { setView((viewMode+1)%3); return; }
+        if(id==MinimizeWidget) { ShowWindow(window,SW_MINIMIZE); return; }
         if(id==Overlay || id==FullEditor) { setOverlay(id==Overlay); return; }
         if(id==CloseWidget) { SendMessageW(window,WM_CLOSE,0,0); return; }
         if(id==Opacity) {
@@ -355,10 +372,9 @@ void command(int id,int code) {
             SetLayeredWindowAttributes(window,0,overlayAlphas[opacityIndex],LWA_ALPHA);
             text(Opacity,opacityIndex==0?L"100%":opacityIndex==1?L"85%":L"65%"); return;
         }
-        if(id==ClickThrough && overlayMode && overlayHotkey) {
-            clickThrough=!clickThrough;
-            LONG_PTR ex=GetWindowLongPtrW(window,GWL_EXSTYLE);
-            SetWindowLongPtrW(window,GWL_EXSTYLE,clickThrough?ex|WS_EX_TRANSPARENT:ex&~WS_EX_TRANSPARENT);
+        if(id==PositionLock && overlayMode) {
+            positionLocked=!positionLocked;
+            text(PositionLock,positionLocked?L"Unlock":L"Lock");
             InvalidateRect(window,nullptr,FALSE); return;
         }
     }
@@ -393,6 +409,16 @@ void command(int id,int code) {
         catch(...) { choose(Mode,settings.sequence?1:0); throw; }
         settings.sequence=next; refreshList(); editor(); changed(); return;
     }
+    if(id==Meter && code==CBN_SELCHANGE) {
+        int index=choice(Meter);
+        if(index<0 || index>=128) return;
+        commit();
+        auto& b=settings.sequence?settings.bars[selected]:settings.simple;
+        int beats=index/4+1, unit=std::array<int,4>{2,4,8,16}[index%4];
+        if(b.beats!=beats) b.groups={beats};
+        b.beats=beats; b.unit=unit;
+        refreshList(); editor(); changed(); return;
+    }
     if(id==Sound&&code==CBN_SELCHANGE) { settings.sound=choice(Sound); audio.setSound(settings.sound); changed(); return; }
     if(code==CBN_SELCHANGE) { changed(); return; }
     if(code!=BN_CLICKED) return;
@@ -418,12 +444,14 @@ void command(int id,int code) {
 void visibility() {
     for(const auto& c:controls) {
         int id=GetDlgCtrlID(c.hwnd);
-        bool widget=id==FullEditor||id==Opacity||id==ClickThrough||id==CloseWidget;
+        bool widget=id==FullEditor||id==Opacity||id==PositionLock||id==CloseWidget||id==MinimizeWidget;
         bool shared=id==Start||id==Bpm||id==Minus||id==Plus||id==Tap||id==NextStep;
-        ShowWindow(c.hwnd,overlayMode?(widget||shared?SW_SHOW:SW_HIDE):(widget?SW_HIDE:SW_SHOW));
+        bool tiny=id==Bpm||id==Start||id==Meter||id==PositionLock||id==MinimizeWidget||id==CycleView||id==CloseWidget;
+        bool visible=viewMode==0?tiny:overlayMode?(widget||shared||id==CycleView):(!widget&&id!=Meter);
+        ShowWindow(c.hwnd,visible?SW_SHOW:SW_HIDE);
     }
     if(overlayMode) {
-        EnableWindow(control(ClickThrough),overlayHotkey);
+        EnableWindow(control(PositionLock),TRUE);
         RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN); return;
     }
     const std::vector<int> rhythm{Beats,Unit,Groups,Apply};
@@ -436,12 +464,19 @@ void visibility() {
     RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN);
 }
 void arrange() {
+    SendMessageW(control(Bpm),WM_SETFONT,reinterpret_cast<WPARAM>(viewMode==0?beatFont:numberFont),TRUE);
     if(overlayMode) {
         auto move=[](int id,int x,int y,int w,int h) { SetWindowPos(control(id),nullptr,px(x),px(y),px(w),px(h),SWP_NOZORDER|SWP_NOACTIVATE); };
-        move(FullEditor,160,10,64,28); move(Opacity,230,10,58,28);
-        move(ClickThrough,294,10,52,28); move(CloseWidget,352,10,32,28);
-        move(Bpm,16,64,140,58); move(Minus,164,72,32,36); move(Plus,202,72,32,36);
-        move(Tap,244,82,60,32); move(Start,312,78,72,40); move(NextStep,274,180,110,30);
+        if(viewMode==0) {
+            move(Bpm,30,6,58,32); move(Meter,94,8,70,240); move(Start,170,8,54,28);
+            move(PositionLock,230,8,48,28); move(MinimizeWidget,284,8,28,28);
+            move(CycleView,318,8,50,28); move(CloseWidget,374,8,28,28);
+        } else {
+            move(FullEditor,112,10,54,28); move(CycleView,170,10,44,28); move(Opacity,218,10,52,28);
+            move(PositionLock,274,10,52,28); move(MinimizeWidget,330,10,24,28); move(CloseWidget,358,10,26,28);
+            move(Bpm,16,64,140,58); move(Minus,164,72,32,36); move(Plus,202,72,32,36);
+            move(Tap,244,82,60,32); move(Start,312,78,72,40); move(NextStep,274,180,110,30);
+        }
         RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_FRAME); return;
     }
     // No scrolling canvas or pixel copying. Reposition controls only on resize/DPI changes.
@@ -455,23 +490,25 @@ void arrange() {
         for(const auto& c:controls) SetWindowPos(c.hwnd,nullptr,px(c.x),px(c.y),px(c.w),px(c.h),flags);
     RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_FRAME);
 }
-void setOverlay(bool enabled) {
-    if(enabled==overlayMode) return;
+void setView(int next) {
+    if(next==viewMode) return;
+    bool enabled=next!=2;
     // Commit a partially typed BPM before moving focus or hiding the editor.
     acceptTempo(true);
-    if(enabled) {
+    if(enabled && !overlayMode) {
         fullPlacement.length=sizeof(fullPlacement); GetWindowPlacement(window,&fullPlacement);
         if(fullPlacement.showCmd==SW_HIDE) fullPlacement.showCmd=SW_SHOWNORMAL;
         if(IsZoomed(window)||IsIconic(window)) ShowWindow(window,SW_RESTORE);
-    } else GetWindowRect(window,&widgetRect);
-    overlayMode=enabled; clickThrough=false;
+    }
+    if(overlayMode && !IsIconic(window)) GetWindowRect(window,&widgetRect);
+    overlayMode=enabled; viewMode=next;
     DWORD style=enabled?WS_POPUP|WS_BORDER|WS_CLIPCHILDREN:WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN;
     DWORD ex=WS_EX_CONTROLPARENT|(enabled?WS_EX_LAYERED:WS_EX_COMPOSITED);
     SetWindowLongPtrW(window,GWL_STYLE,style|WS_VISIBLE);
     SetWindowLongPtrW(window,GWL_EXSTYLE,ex);
     if(enabled) {
         SetLayeredWindowAttributes(window,0,overlayAlphas[opacityIndex],LWA_ALPHA);
-        RECT r{0,0,px(WidgetWidth),px(WidgetHeight)};
+        RECT r{0,0,px(overlayWidth()),px(overlayHeight())};
         AdjustWindowRectExForDpi(&r,style,FALSE,ex,GetDpiForWindow(window));
         RECT work{}; MONITORINFO mi{}; mi.cbSize=sizeof(mi);
         if(GetMonitorInfoW(MonitorFromWindow(window,MONITOR_DEFAULTTONEAREST),&mi)) work=mi.rcWork;
@@ -487,7 +524,7 @@ void setOverlay(bool enabled) {
     }
     text(Tap,enabled?L"Tap":L"Tap tempo");
     text(Start,playing?(enabled?L"Stop":L"Stop   [Space]"):(enabled?L"Start":L"Start   [Space]"));
-    arrange(); visibility(); SetFocus(control(Start));
+    arrange(); syncMeter(); visibility(); SetFocus(control(Start));
 }
 LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
     switch(message) {
@@ -495,11 +532,15 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
             window=hwnd; scale=GetDpiForWindow(hwnd)/96.f; bgBrush=CreateSolidBrush(BG); panelBrush=CreateSolidBrush(PANEL); setFonts();
             BOOL dark=FALSE; DwmSetWindowAttribute(hwnd,20,&dark,sizeof(dark));
             button(L"Widget",Overlay,322,236,100,34);
+            button(L"Size",CycleView,430,236,80,34);
+            button(L"−",MinimizeWidget,0,0,28,28);
+            std::vector<std::wstring> meters;
+            for(int beats=1;beats<=32;++beats) for(int unit:{2,4,8,16}) meters.push_back(std::to_wstring(beats)+L"/"+std::to_wstring(unit));
+            combo(Meter,0,0,70,meters,13);
             button(L"Editor",FullEditor,0,0,64,28);
             button(L"100%",Opacity,0,0,58,28);
-            button(L"Lock",ClickThrough,0,0,52,28);
+            button(L"Lock",PositionLock,0,0,52,28);
             button(L"×",CloseWidget,0,0,32,28);
-            overlayHotkey=RegisterHotKey(hwnd,OverlayHotkey,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,'P')!=0;
             button(L"Open…",Load,652,18,102,34); button(L"Save…",Save,766,18,110,34);
             edit(L"120",Bpm,44,104,140);
             controls.back().h=60; SetWindowPos(control(Bpm),nullptr,px(44),px(104),px(140),px(60),SWP_NOZORDER);
@@ -532,17 +573,14 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
             syncSystemVolume(); SetTimer(hwnd,VolumeSyncTimer,500,nullptr);
             populate(); dirty=false; title(); return 0;
         }
-        case WM_HOTKEY:
-            if(wp==OverlayHotkey && overlayMode && clickThrough) {
-                clickThrough=false;
-                SetWindowLongPtrW(hwnd,GWL_EXSTYLE,GetWindowLongPtrW(hwnd,GWL_EXSTYLE)&~WS_EX_TRANSPARENT);
-                InvalidateRect(hwnd,nullptr,FALSE);
-            } return 0;
         case WM_NCHITTEST:
             if(overlayMode) {
                 POINT point{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)}; ScreenToClient(hwnd,&point);
-                if(point.x>=0&&point.x<px(150)&&point.y>=0&&point.y<px(44)) return HTCAPTION;
+                if(!positionLocked && point.x>=0&&point.x<px(viewMode==0?26:108)&&point.y>=0&&point.y<px(44)) return HTCAPTION;
             } break;
+        case WM_SYSCOMMAND:
+            if(overlayMode && positionLocked && (wp&0xfff0)==SC_MOVE) return 0;
+            break;
         case WM_HSCROLL:
             if(reinterpret_cast<HWND>(lp)==control(VolumeSlider)) {
                 settings.volume=static_cast<int>(SendMessageW(control(VolumeSlider),TBM_GETPOS,0,0));
@@ -556,7 +594,7 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
             } break;
         case WM_TIMER: if(wp==VolumeEditTimer) { acceptVolume(); return 0; } if(wp==VolumeSyncTimer) { syncSystemVolume(); return 0; } if(wp==TempoEditTimer) { acceptTempo(); return 0; } break;
         case WM_COMMAND: try { command(LOWORD(wp),HIWORD(wp)); } catch(const std::exception& e) { error(e); } return 0;
-        case WM_PULSE_BEAT: if(playing) { currentBeat=LOWORD(wp); currentStep=HIWORD(wp); currentRepeat=LOWORD(lp); currentSilent=HIWORD(lp)!=0; InvalidateRect(hwnd,nullptr,FALSE); } return 0;
+        case WM_PULSE_BEAT: if(playing) { currentBeat=LOWORD(wp); currentStep=HIWORD(wp); currentRepeat=LOWORD(lp); currentSilent=HIWORD(lp)!=0; syncMeter(); InvalidateRect(hwnd,nullptr,FALSE); } return 0;
         case WM_PULSE_ERROR: if(playing) { stop(); wchar_t messageText[256]; swprintf(messageText,256,L"Could not play audio (0x%08lX). Check your default Windows output device, then press Start to reconnect.",static_cast<unsigned long>(wp)); status(messageText); MessageBoxW(hwnd,messageText,L"Audio unavailable",MB_OK|MB_ICONWARNING); } return 0;
         case WM_DRAWITEM: drawButton(reinterpret_cast<DRAWITEMSTRUCT*>(lp)); return TRUE;
         case WM_MEASUREITEM: reinterpret_cast<MEASUREITEMSTRUCT*>(lp)->itemHeight=px(38); return TRUE;
@@ -568,10 +606,10 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
 
 
         case WM_PAINT: { PAINTSTRUCT ps; HDC dc=BeginPaint(hwnd,&ps); RECT r; GetClientRect(hwnd,&r); HDC buffer=CreateCompatibleDC(dc); HBITMAP bitmap=CreateCompatibleBitmap(dc,r.right,r.bottom); auto old=SelectObject(buffer,bitmap); paint(buffer); SetViewportOrgEx(buffer,0,0,nullptr); BitBlt(dc,0,0,r.right,r.bottom,buffer,0,0,SRCCOPY); SelectObject(buffer,old); DeleteObject(bitmap); DeleteDC(buffer); EndPaint(hwnd,&ps); return 0; }
-        case WM_GETMINMAXINFO: { auto mm=reinterpret_cast<MINMAXINFO*>(lp); RECT r{0,0,px(overlayMode?WidgetWidth:900),px(overlayMode?WidgetHeight:610)}; AdjustWindowRectExForDpi(&r,overlayMode?WS_POPUP|WS_BORDER:WS_OVERLAPPEDWINDOW,FALSE,overlayMode?WS_EX_LAYERED:0,static_cast<UINT>(96*scale)); mm->ptMinTrackSize={r.right-r.left,r.bottom-r.top}; return 0; }
+        case WM_GETMINMAXINFO: { auto mm=reinterpret_cast<MINMAXINFO*>(lp); RECT r{0,0,px(overlayMode?overlayWidth():900),px(overlayMode?overlayHeight():610)}; AdjustWindowRectExForDpi(&r,overlayMode?WS_POPUP|WS_BORDER:WS_OVERLAPPEDWINDOW,FALSE,overlayMode?WS_EX_LAYERED:0,static_cast<UINT>(96*scale)); mm->ptMinTrackSize={r.right-r.left,r.bottom-r.top}; return 0; }
         case WM_DPICHANGED: { scale=HIWORD(wp)/96.f; setFonts(); SendMessageW(control(Steps),LB_SETITEMHEIGHT,0,px(38)); auto r=reinterpret_cast<RECT*>(lp); SetWindowPos(hwnd,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE); arrange(); InvalidateRect(hwnd,nullptr,TRUE); return 0; }
         case WM_CLOSE: stop(); DestroyWindow(hwnd); return 0;
-        case WM_DESTROY: if(overlayHotkey) UnregisterHotKey(hwnd,OverlayHotkey); PostQuitMessage(0); return 0;
+        case WM_DESTROY: PostQuitMessage(0); return 0;
     }
     return DefWindowProcW(hwnd,message,wp,lp);
 }
@@ -586,7 +624,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int show) {
     RECT work{}; SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     auto hwnd=CreateWindowExW(WS_EX_CONTROLPARENT|WS_EX_COMPOSITED,cls.lpszClassName,L"Pulse",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,std::min(r.right-r.left,work.right-work.left),std::min(r.bottom-r.top,work.bottom-work.top),nullptr,nullptr,instance,nullptr);
     if(!hwnd) return 1;
-    setOverlay(true); ShowWindow(hwnd,show); UpdateWindow(hwnd);
+    setView(0); ShowWindow(hwnd,show); UpdateWindow(hwnd);
     MSG msg;
     while(GetMessageW(&msg,nullptr,0,0)>0) {
         bool handled=false;
