@@ -9,6 +9,16 @@ void rejects(const std::function<void()>& fn) { bool threw=false; try { fn(); } 
 int main() {
     try {
         pulse::Settings s;
+        require(s.volume==200 && !s.accents,"Fresh launches default to 200 percent without accents");
+        for(int preset=0;preset<4;++preset) {
+            auto initial=s; initial.bpm=137; initial.volume=333; initial.sound=3;
+            auto selected=pulse::practicePreset(initial,preset);
+            require(selected.bpm==137&&selected.volume==333&&selected.sound==3&&!selected.accents,"Built-in practices preserve audio and tempo preferences");
+            require(selected.sequence==(preset==3),"Only mixed-meter preset enables sequence mode");
+            if(preset==2) require(selected.simple.groups==std::vector<int>({2,2,3}),"Seven preset uses 2+2+3 grouping");
+            std::stringstream file; pulse::save(file,selected); require(pulse::load(file).volume==333,"Built-in practices serialize correctly");
+        }
+        rejects([&]{pulse::practicePreset(s,4);});
         for(int sound=0;sound<4;++sound) {
             pulse::Settings flat; flat.sound=sound; flat.accents=false;
             std::stringstream preset; pulse::save(preset,flat);

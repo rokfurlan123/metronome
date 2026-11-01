@@ -6,3 +6,5 @@
 - Run `scripts/test.sh` for rhythm/preset changes and `scripts/build.sh` for native changes. GUI tests are development-aware smoke tests, not independent behavioral testing.
 - Update `docs/WORKLOG.md` with meaningful changes and validation. Keep runtime limitations explicit.
 - Do not copy, launch, or modify anything on a Windows drive without the user's required authorization. Linux-hosted Wine tests use a disposable Linux prefix.
+
+- Codex-only workflow (2026-10-31): follow `/home/rokdbest/.codex/AGENTS.md`; do not load or maintain Claude-owned files/configuration. Pulse does not require Linear. Use a descriptive local branch/worktree. Keep screenshot feedback and Git permissions separate; the current Codex-specific Git policy governs commit/push.

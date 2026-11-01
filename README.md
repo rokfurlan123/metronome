@@ -2,6 +2,20 @@
 
 A native Windows desktop metronome for steady practice, changing meters, and layered rhythms. Built with C++20, Win32 controls, and WASAPI audio. No browser, .NET runtime, account, or network connection is required.
 
+## Local design review — 2026-10-31
+
+The `pulse/design-audio` worktree contains a **development-branch review build that is not installed on Windows**. The installed Windows 0.3.1 application and shortcuts are unchanged.
+
+- Graphite/lime interface across the tiny bar (520×52 logical pixels), compact overlay (420×292), Rhythm/Sequence editor and Practice tools.
+- One **Presets ⌄** button in every size: Steady 4/4, Waltz 3/4, Seven 7/8 (2+2+3), Mixed meters, Open, Save as, and session-local recently opened/saved files. Preset changes are disabled during playback. Quick practices preserve current tempo, sound, volume and accent preference; file presets restore their saved settings.
+- Fresh launches start **stopped at 200% metronome volume, with accents off**. Windows master volume is not changed. File presets keep explicit saved settings, including legacy accents.
+- Unaccented clicks now share a consistent envelope length across the active practice. Dense subdivisions/second-pulse grids previously shortened some tails more than others, creating unintended differences. Very dense practices shorten all tails consistently; normal, well-separated clicks retain their normal sound. Live tempo changes update that envelope limit at the beat boundary.
+- [Before/after native layout review](docs/design-review/README.md). These are Linux Wine client-area captures with native child/menu owner-draw output composited, **not real Windows screenshots or a listening assessment**. Pulse is native desktop software, so phone/tablet browser previews do not apply.
+
+Repeat with `bash scripts/preview-native.sh docs/design-review/after`; the optional `baseline` second argument captures source revision `c89617d` from inside this worktree. PNG conversion uses the existing Linux Pillow installation. No browser dependencies were introduced. Do not run two Wine GUI suites concurrently: they share the disposable test prefix.
+
+The following release instructions describe the existing installed 0.3.1 build; revised dimensions/defaults above apply only to the local review build until approved and installed.
+
 ## Run
 
 Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.1-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.1\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts. Older version folders are retained.

@@ -39,7 +39,8 @@ int main(int argc,char** argv) {
     auto run=[&](const char* kind,pulse::Settings s,int rate,bool expectUniform) {
         auto m=audit(s,rate); ++cases;
         csv<<kind<<','<<rate<<','<<s.bpm<<','<<s.simple.beats<<','<<s.simple.unit<<','<<s.subdivision<<','<<s.poly<<','<<s.sound<<','<<s.volume<<','<<m.clicks<<','<<m.duplicates<<','<<std::setprecision(10)<<m.dbSpread<<','<<m.maxDifference<<'\n';
-        if(expectUniform) { worstRegular=std::max(worstRegular,m.dbSpread); if(m.dbSpread>.01) ++failures; }
+        if(expectUniform) { worstRegular=std::max(worstRegular,m.dbSpread); if(m.dbSpread>.01 || m.maxDifference>0.000001) ++failures; }
+        else if(m.dbSpread<.5) ++failures;
     };
     for(int sound=0;sound<4;++sound) for(int volume:{70,100,200,400}) for(int bpm:{60,137,160,199,300}) for(int unit:{4,8,16}) for(int subdivision:{1,2,3,4}) {
         pulse::Settings s; s.accents=false; s.sound=sound; s.volume=volume; s.bpm=bpm; s.subdivision=subdivision; s.simple={7,unit,1,0,{2,2,3}};
@@ -60,6 +61,12 @@ int main(int argc,char** argv) {
     for(int sound=0;sound<4;++sound) {
         pulse::Settings s; s.accents=false; s.sound=sound; s.volume=400; s.bpm=300; s.simple={32,4,1,0,{7,9,16}};
         run("32_beat_meter",s,48000,true);
+    }
+    // Dense, irregular pulse grids used to give each onset a different tail.
+    for(int sound=0;sound<4;++sound) for(int volume:{200,300,400}) for(int poly:{3,13,16}) {
+        pulse::Settings s; s.accents=false; s.sound=sound; s.volume=volume; s.bpm=300;
+        s.subdivision=4; s.poly=poly; s.simple={7,16,1,0,{2,2,3}};
+        run("dense_irregular",s,48000,true);
     }
     std::cout<<"Rendered "<<cases<<" complete-stream cases. Worst regular unaccented energy spread: "<<worstRegular<<" dB. Cases over 0.01 dB: "<<failures<<". Detailed CSV written.\n";
     return failures?1:0;

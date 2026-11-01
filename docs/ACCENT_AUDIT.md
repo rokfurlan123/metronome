@@ -44,3 +44,15 @@ The existing Windows native UI regression suite also passed, including playback 
 ## Limits
 
 These are digital-render and Windows-loopback measurements, not a microphone measurement of speakers/headphones or an independent listening assessment. The Windows test uses reduced test-session gain; it does not prove behavior of downstream hardware processing at every listening volume. Deliberate silent beats, explicit tempo changes and polyrhythm intervals still affect perceived rhythm. No claim is made that the previously reported plain 160 BPM case had measured audio accents.
+
+## 2026-10-31 — dense irregular grids and new startup defaults
+
+Fresh launches now use 200% gain with accents disabled. Explicit file-preset settings are preserved, including legacy formats 1–2 retaining their old accent behavior.
+
+A further reproducible edge case remained: 300 BPM, 7/16 grouped 2+2+3, four subdivisions, 13 second pulses/bar, 400% gain. The previous per-onset tail truncation produced **0.512 / 0.965 / 0.637 / 2.479 dB** energy spreads across clean/woodblock/bright/full sounds. This is a dense overlapping-grid case, **not proof of the cause of the user's ordinary metronome listening report**.
+
+Unaccented synthesis now uses the shortest grid spacing across the active practice as a shared envelope limit (`bar duration / lcm(main subdivisions per bar, second pulses per bar)`). Every onset has the same tail length, pitch and gain; coincident pulses still form one voice. The limit is floored to whole samples for conservative fractional scheduling, and live main-BPM changes update the render settings at the same beat boundary. Accent-enabled synthesis remains unchanged. Extremely dense grids consequently shorten all click tails consistently rather than varying them from hit to hit.
+
+The expanded audit renders **1,080** complete-stream cases, including **36 new dense cases at 200/300/400% gain**. All **1,068 unaccented cases** have **0 dB energy spread and zero onset-aligned sample difference**. Twelve positive accent controls remain measurably accented (at least 0.5 dB). [Current audit CSV](design-review/audio-audit.csv). The existing sanitizer suite passes **272,573 checks**.
+
+These are digital-render measurements. The installed Windows app has not been updated, and no new physical listening or Windows-loopback capture has been performed. Hardware processing, downstream gain and the originally reported simple setup remain listening-validation limits.

@@ -17,19 +17,19 @@
 #include "system_volume.h"
 
 namespace {
-const COLORREF BG = RGB(244,246,248), PANEL = RGB(255,255,255), INK = RGB(30,43,50), MUTED = RGB(91,108,116), LINE = RGB(226,232,235), TEAL = RGB(12,110,93);
-enum Id { Start=100, Tap, Bpm, Mode, Beats, Unit, Groups, Subdivision, Poly, Mute, Volume, Sound, Steps, Repeats, StepTempo, Add, Apply, Remove, Up, Down, Save, Load, Example, Minus, Plus, Forever, NextStep, RhythmTab, ToolsTab, Accents, SystemVolumeSlider, VolumeSlider, Overlay, FullEditor, Opacity, PositionLock, CloseWidget, MinimizeWidget, CycleView, Meter };
+const COLORREF BG = RGB(12,16,22), PANEL = RGB(21,28,38), INK = RGB(236,241,246), MUTED = RGB(145,160,179), LINE = RGB(39,50,65), TEAL = RGB(190,242,112), ON_ACCENT = RGB(19,30,12);
+enum Id { Start=100, Tap, Bpm, Mode, Beats, Unit, Groups, Subdivision, Poly, Mute, Volume, Sound, Steps, Repeats, StepTempo, Add, Apply, Remove, Up, Down, Save, Load, Example, Minus, Plus, Forever, NextStep, RhythmTab, ToolsTab, Accents, SystemVolumeSlider, VolumeSlider, Overlay, FullEditor, Opacity, PositionLock, CloseWidget, MinimizeWidget, CycleView, Meter, Presets };
 struct Control { HWND hwnd; int x,y,w,h; };
 HWND window;
 std::vector<Control> controls;
 HFONT font, smallFont, titleFont, numberFont, beatFont;
-HBRUSH bgBrush, panelBrush;
+HBRUSH bgBrush, panelBrush, fieldBrush;
 float scale = 1;
 bool toolsPage = false, overlayMode = false, positionLocked = false;
 int viewMode = 2; // 0: tiny bar, 1: compact overlay, 2: full editor
 int opacityIndex = 0;
 constexpr BYTE overlayAlphas[]{255,217,166};
-constexpr int WidgetWidth = 400, WidgetHeight = 248, TinyWidth = 410, TinyHeight = 44;
+constexpr int WidgetWidth = 420, WidgetHeight = 292, TinyWidth = 520, TinyHeight = 52;
 int overlayWidth() { return viewMode==0?TinyWidth:WidgetWidth; }
 int overlayHeight() { return viewMode==0?TinyHeight:WidgetHeight; }
 WINDOWPLACEMENT fullPlacement{};
@@ -39,11 +39,15 @@ void visibility();
 void setView(int next);
 void setOverlay(bool enabled) { setView(enabled?1:2); }
 void syncMeter();
+void presetMenu();
+void drawText(HDC,const std::wstring&,int,int,int,int,HFONT,COLORREF,UINT);
+void box(HDC,int,int,int,int,COLORREF,int);
+std::vector<std::filesystem::path> recentPresets;
 pulse::Settings settings;
 Audio audio;
 int selected = 0, currentBeat = -1, currentStep = 0, currentRepeat = 0;
 bool currentSilent = false, playing = false, dirty = false, populating = false;
-std::wstring notice = L"Ready. Press Start to play.";
+std::wstring notice = L"Ready when you are.  200% volume · accents off.";
 std::vector<double> taps;
 constexpr UINT_PTR TempoEditTimer = 1, VolumeSyncTimer = 2, VolumeEditTimer = 3;
 std::wstring systemVolumeLabel=L"Windows volume";
@@ -102,7 +106,7 @@ void acceptVolume(bool restoreInvalid=false) {
     }
 }
 void error(const std::exception& e) { MessageBoxW(window,widen(e.what()).c_str(),L"Check your rhythm",MB_OK|MB_ICONINFORMATION); }
-void title() { SetWindowTextW(window,dirty?L"Pulse 0.3.1 • unsaved changes":L"Pulse 0.3.1 — Metronome & mixed meters"); }
+void title() { SetWindowTextW(window,dirty?L"Pulse • unsaved practice":L"Pulse — Find your rhythm"); }
 void changed() { dirty=true; title(); }
 HWND make(const wchar_t* cls, const wchar_t* label, int id,int x,int y,int w,int h,DWORD style) {
     HWND c=CreateWindowExW(0,cls,label,WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|style,px(x),px(y),px(w),px(h),window,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),GetModuleHandleW(nullptr),nullptr);
@@ -144,24 +148,78 @@ LRESULT CALLBACK tempoButton(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR sub
     }
     return DefSubclassProc(hwnd,msg,wp,lp);
 }
+LRESULT CALLBACK buttonVisual(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR) {
+    if(msg==WM_MOUSEMOVE) { TRACKMOUSEEVENT t{sizeof(t),TME_LEAVE,hwnd,0}; TrackMouseEvent(&t); InvalidateRect(hwnd,nullptr,FALSE); }
+    if(msg==WM_MOUSELEAVE||msg==WM_SETFOCUS||msg==WM_KILLFOCUS) InvalidateRect(hwnd,nullptr,FALSE);
+    if(msg==WM_NCDESTROY) RemoveWindowSubclass(hwnd,buttonVisual,id);
+    return DefSubclassProc(hwnd,msg,wp,lp);
+}
 void button(const wchar_t* label,int id,int x,int y,int w,int h=36) {
     HWND hwnd=make(L"BUTTON",label,id,x,y,w,h,BS_OWNERDRAW);
+    SetWindowSubclass(hwnd,buttonVisual,2,0);
     if(id==Minus||id==Plus) {
         auto* hold=new TempoHold;
         if(!SetWindowSubclass(hwnd,tempoButton,1,reinterpret_cast<DWORD_PTR>(hold))) delete hold;
     }
 }
-void edit(const wchar_t* label,int id,int x,int y,int w) { auto c=make(L"EDIT",label,id,x,y,w,32,WS_BORDER|ES_AUTOHSCROLL); SendMessageW(c,EM_SETLIMITTEXT,100,0); }
+void edit(const wchar_t* label,int id,int x,int y,int w) { auto c=make(L"EDIT",label,id,x,y,w,32,ES_AUTOHSCROLL); SetWindowTheme(c,L"",L""); SendMessageW(c,EM_SETLIMITTEXT,100,0); SendMessageW(c,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELPARAM(px(10),px(6))); }
+LRESULT CALLBACK comboVisual(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR subclass,DWORD_PTR) {
+    if(msg==WM_PAINT||msg==WM_PRINTCLIENT) {
+        PAINTSTRUCT ps{}; HDC dc=msg==WM_PAINT?BeginPaint(hwnd,&ps):reinterpret_cast<HDC>(wp);
+        RECT r; GetClientRect(hwnd,&r); HBRUSH brush=CreateSolidBrush(GetDlgCtrlID(hwnd)==Mode||viewMode==0?BG:PANEL); FillRect(dc,&r,brush); DeleteObject(brush);
+        auto old=SelectObject(dc,GetStockObject(NULL_PEN)); brush=CreateSolidBrush(LINE); auto oldB=SelectObject(dc,brush);
+        RoundRect(dc,0,0,r.right,r.bottom,px(10),px(10)); SelectObject(dc,oldB); SelectObject(dc,old); DeleteObject(brush);
+        SelectObject(dc,font); SetBkMode(dc,TRANSPARENT); SetTextColor(dc,IsWindowEnabled(hwnd)?INK:MUTED);
+        wchar_t label[256]{}; int index=static_cast<int>(SendMessageW(hwnd,CB_GETCURSEL,0,0)); if(index>=0) SendMessageW(hwnd,CB_GETLBTEXT,index,reinterpret_cast<LPARAM>(label));
+        RECT textRect{px(10),0,r.right-px(24),r.bottom}; DrawTextW(dc,label,-1,&textRect,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+        SetTextColor(dc,MUTED); RECT arrow{r.right-px(24),0,r.right-px(5),r.bottom}; DrawTextW(dc,L"⌄",-1,&arrow,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+        if(GetFocus()==hwnd) { RECT focus=r; InflateRect(&focus,-2,-2); DrawFocusRect(dc,&focus); }
+        if(msg==WM_PAINT) EndPaint(hwnd,&ps);
+        return 0;
+    }
+    if(msg==WM_ENABLE||msg==WM_SETFOCUS||msg==WM_KILLFOCUS) InvalidateRect(hwnd,nullptr,FALSE);
+    if(msg==WM_NCDESTROY) RemoveWindowSubclass(hwnd,comboVisual,subclass);
+    return DefSubclassProc(hwnd,msg,wp,lp);
+}
+LRESULT CALLBACK checkVisual(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR subclass,DWORD_PTR) {
+    if(msg==WM_PAINT||msg==WM_PRINTCLIENT||msg==WM_PRINT) {
+        PAINTSTRUCT ps{}; HDC dc=msg==WM_PAINT?BeginPaint(hwnd,&ps):reinterpret_cast<HDC>(wp);
+        RECT r; GetClientRect(hwnd,&r); HBRUSH brush=CreateSolidBrush(PANEL); FillRect(dc,&r,brush); DeleteObject(brush);
+        bool checked=SendMessageW(hwnd,BM_GETCHECK,0,0)==BST_CHECKED;
+        brush=CreateSolidBrush(checked?TEAL:LINE); auto oldB=SelectObject(dc,brush); auto oldP=SelectObject(dc,GetStockObject(NULL_PEN));
+        RoundRect(dc,0,px(6),px(20),px(26),px(6),px(6)); SelectObject(dc,oldB); SelectObject(dc,oldP); DeleteObject(brush);
+        if(checked) { SelectObject(dc,font); SetBkMode(dc,TRANSPARENT); SetTextColor(dc,ON_ACCENT); RECT tick{0,px(6),px(20),px(26)}; DrawTextW(dc,L"✓",-1,&tick,DT_CENTER|DT_VCENTER|DT_SINGLELINE); }
+        wchar_t label[128]{}; GetWindowTextW(hwnd,label,128); RECT text{px(30),0,r.right,r.bottom};
+        SelectObject(dc,font); SetBkMode(dc,TRANSPARENT); SetTextColor(dc,IsWindowEnabled(hwnd)?INK:MUTED); DrawTextW(dc,label,-1,&text,DT_VCENTER|DT_SINGLELINE);
+        if(GetFocus()==hwnd) DrawFocusRect(dc,&r);
+        if(msg==WM_PAINT) EndPaint(hwnd,&ps);
+        return 0;
+    }
+    LRESULT result=DefSubclassProc(hwnd,msg,wp,lp);
+    if(msg==BM_SETCHECK||msg==WM_LBUTTONUP||msg==WM_KEYUP||msg==WM_SETFOCUS||msg==WM_KILLFOCUS||msg==WM_ENABLE) InvalidateRect(hwnd,nullptr,FALSE);
+    if(msg==WM_NCDESTROY) RemoveWindowSubclass(hwnd,checkVisual,subclass);
+    return result;
+}
 void combo(int id,int x,int y,int w,const std::vector<std::wstring>& options,int index) {
-    auto c=make(L"COMBOBOX",L"",id,x,y,w,220,CBS_DROPDOWNLIST|WS_VSCROLL);
+    auto c=make(L"COMBOBOX",L"",id,x,y,w,220,CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL);
     for (auto& s:options) { SendMessageW(c,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(s.c_str())); }
     choose(id,index);
+    SendMessageW(c,CB_SETITEMHEIGHT,static_cast<WPARAM>(-1),px(28));
+    SendMessageW(c,CB_SETITEMHEIGHT,0,px(30));
+    SetWindowSubclass(c,comboVisual,3,0);
 }
 void setFonts() {
     for (HFONT f:{font,smallFont,titleFont,numberFont,beatFont}) if (f) DeleteObject(f);
     auto create=[](int size,int weight) { return CreateFontW(-px(size),0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI"); };
-    font=create(15,FW_NORMAL); smallFont=create(12,FW_NORMAL); titleFont=create(28,FW_SEMIBOLD); numberFont=create(46,FW_SEMIBOLD); beatFont=create(20,FW_SEMIBOLD);
-    for (auto& c:controls) SendMessageW(c.hwnd,WM_SETFONT,reinterpret_cast<WPARAM>(GetDlgCtrlID(c.hwnd)==Bpm?numberFont:font),TRUE);
+    font=create(15,FW_NORMAL); smallFont=create(12,FW_NORMAL); titleFont=create(28,FW_BOLD); numberFont=create(48,FW_SEMIBOLD); beatFont=create(20,FW_SEMIBOLD);
+    for (auto& c:controls) {
+        SendMessageW(c.hwnd,WM_SETFONT,reinterpret_cast<WPARAM>(GetDlgCtrlID(c.hwnd)==Bpm?numberFont:font),TRUE);
+        wchar_t cls[32]{}; GetClassNameW(c.hwnd,cls,32);
+        if(_wcsicmp(cls,L"ComboBox")==0) {
+            SendMessageW(c.hwnd,CB_SETITEMHEIGHT,static_cast<WPARAM>(-1),px(28));
+            SendMessageW(c.hwnd,CB_SETITEMHEIGHT,0,px(30));
+        }
+    }
 }
 pulse::Bar readBar() {
     pulse::Bar b; b.beats=integer(Beats,1,32,"Beats"); b.unit=std::array<int,4>{2,4,8,16}[std::max(0,choice(Unit))];
@@ -240,6 +298,7 @@ void tap() {
 }
 bool discard() { return !dirty||MessageBoxW(window,L"Discard unsaved changes to this practice?",L"Unsaved practice",MB_YESNO|MB_ICONQUESTION)==IDYES; }
 void preset(bool saving) {
+    if(playing) return;
     if(saving) commit(); else if(!discard()) return;
     wchar_t path[32768]=L"My practice.pulse";
     OPENFILENAMEW dialog{}; dialog.lStructSize=sizeof(dialog); dialog.hwndOwner=window;
@@ -254,7 +313,44 @@ void preset(bool saving) {
             if(!MoveFileExW(temp.c_str(),target.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) throw std::runtime_error("Could not replace the preset. Check folder permissions.");
         } catch(...) { std::error_code ignored; std::filesystem::remove(temp,ignored); throw; }
     } else { std::ifstream in{std::filesystem::path(path)}; auto loaded=pulse::load(in); settings=loaded; selected=0; populate(); }
+    std::filesystem::path chosen(path);
+    recentPresets.erase(std::remove(recentPresets.begin(),recentPresets.end(),chosen),recentPresets.end());
+    recentPresets.insert(recentPresets.begin(),chosen); if(recentPresets.size()>8) recentPresets.pop_back();
     dirty=false; title(); status(saving?L"Practice saved.":L"Practice loaded. Press Start when you’re ready.");
+}
+void presetMenu() {
+    if(playing) return;
+    HMENU menu=CreatePopupMenu();
+    MENUINFO appearance{}; appearance.cbSize=sizeof(appearance); appearance.fMask=MIM_BACKGROUND; appearance.hbrBack=panelBrush; SetMenuInfo(menu,&appearance);
+    auto append=[&](int id,const wchar_t* label) {
+        MENUITEMINFOW item{}; item.cbSize=sizeof(item);
+        item.fMask=MIIM_ID|MIIM_DATA|MIIM_FTYPE|MIIM_STRING; item.wID=id; item.fType=MFT_OWNERDRAW;
+        item.dwTypeData=const_cast<wchar_t*>(label); item.dwItemData=reinterpret_cast<ULONG_PTR>(label);
+        InsertMenuItemW(menu,GetMenuItemCount(menu),TRUE,&item);
+    };
+    const wchar_t* names[]{L"Steady  ·  4/4",L"Waltz  ·  3/4",L"Seven  ·  7/8 (2+2+3)",L"Mixed meters  ·  4/4 → 7/8 → 3/4"};
+    for(int i=0;i<4;++i) append(1000+i,names[i]);
+    if(!recentPresets.empty()) {
+        AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+        for(size_t i=0;i<recentPresets.size();++i) AppendMenuW(menu,MF_STRING,1100+i,recentPresets[i].filename().c_str());
+    }
+    AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+    append(1200,L"Open preset…     Ctrl+O");
+    append(1201,L"Save preset as…     Ctrl+S");
+    RECT r; GetWindowRect(control(Presets),&r);
+    int chosen=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTALIGN,r.right,r.bottom,0,window,nullptr);
+    DestroyMenu(menu);
+    if(chosen>=1000&&chosen<1004) {
+        if(!discard()) return;
+        acceptTempo(true); acceptVolume(true);
+        settings=pulse::practicePreset(settings,chosen-1000); selected=0; populate(); changed();
+        status(L"Preset ready. Your tempo, sound, volume and accent preference are unchanged.");
+    } else if(chosen>=1100&&chosen<1100+static_cast<int>(recentPresets.size())) {
+        if(!discard()) return;
+        std::ifstream in(recentPresets[chosen-1100]); auto loaded=pulse::load(in);
+        settings=loaded; selected=0; populate(); dirty=false; title(); status(L"Preset loaded. Ready when you are.");
+    } else if(chosen==1200) preset(false);
+    else if(chosen==1201) preset(true);
 }
 void drawText(HDC dc,const std::wstring& s,int x,int y,int w,int h,HFONT f,COLORREF color,UINT flags=DT_LEFT|DT_VCENTER|DT_SINGLELINE) {
     SelectObject(dc,f); SetTextColor(dc,color); SetBkMode(dc,TRANSPARENT); RECT r{px(x),px(y),px(x+w),px(y+h)}; DrawTextW(dc,s.c_str(),-1,&r,flags);
@@ -266,40 +362,38 @@ void box(HDC dc,int x,int y,int w,int h,COLORREF color,int radius=16) {
 void paintWidget(HDC dc) {
     RECT r; GetClientRect(window,&r); FillRect(dc,&r,bgBrush);
     if(viewMode==0) {
-        drawText(dc,positionLocked?L"•":L"⋮",4,4,22,34,beatFont,positionLocked?TEAL:MUTED,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        box(dc,0,0,3,TinyHeight,TEAL,0);
+        drawText(dc,positionLocked?L"•":L"⋮",4,8,20,36,beatFont,positionLocked?TEAL:MUTED,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         return;
     }
-    drawText(dc,L"Pulse",16,8,96,32,beatFont,TEAL);
-    drawText(dc,L"BPM",16,44,100,18,smallFont,MUTED);
+    box(dc,16,18,6,22,TEAL,6);
+    drawText(dc,L"PULSE",30,12,170,32,beatFont,INK);
+    drawText(dc,L"QUARTER-NOTE BPM",18,52,234,20,smallFont,MUTED);
     const auto& b=settings.sequence?settings.bars[playing?currentStep:selected]:settings.simple;
-    drawText(dc,std::to_wstring(b.beats)+L"/"+std::to_wstring(b.unit)+(settings.sequence?L" · Step "+std::to_wstring((playing?currentStep:selected)+1):L""),244,48,140,24,font,INK);
-    int cols=std::min(b.beats,16), gap=3, cw=(368-(cols-1)*gap)/cols;
+    drawText(dc,std::to_wstring(b.beats)+L"/"+std::to_wstring(b.unit)+(settings.sequence?L"  /  STEP "+std::to_wstring((playing?currentStep:selected)+1):L"  /  STEADY PULSE"),18,148,382,26,font,INK);
+    int cols=std::min(b.beats,16), gap=4, cw=(384-(cols-1)*gap)/cols;
     int start=0; std::vector<int> accents;
     for(int n:b.groups) { accents.push_back(start); start+=n; }
     for(int i=0;i<b.beats;++i) {
         bool active=playing&&currentBeat==i;
         bool accent=settings.accents&&std::find(accents.begin(),accents.end(),i)!=accents.end();
-        int x=16+(i%16)*(cw+gap), y=128+(i/16)*26;
-        box(dc,x,y,cw,22,active?(currentSilent?RGB(182,121,24):TEAL):(accent?RGB(211,234,227):LINE),6);
-        drawText(dc,std::to_wstring(i+1),x,y,cw,22,smallFont,active?PANEL:INK,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        int x=18+(i%16)*(cw+gap), y=180+(i/16)*19;
+        box(dc,x,y,cw,15,active?(currentSilent?RGB(225,174,83):TEAL):(accent?RGB(76,94,57):LINE),6);
     }
-    std::wstring hint=playing?L"Playing":L"Stopped";
-    if(playing&&b.bpm) hint+=L" · Step tempo "+std::to_wstring(b.bpm)+L" BPM";
-    if(playing&&currentSilent) hint+=L" · Silent beat";
-    drawText(dc,hint,16,184,248,22,smallFont,TEAL);
-    drawText(dc,positionLocked?L"Position locked · click Unlock to move":L"Drag header · Lock fixes position, not clicks",16,218,368,22,smallFont,MUTED);
+    drawText(dc,(playing?L"● Playing":L"○ Ready")+std::wstring(L"   ·   ")+std::to_wstring(settings.volume)+L"%"+(settings.accents?L"   ·   accents on":L"   ·   accents off"),18,216,250,22,smallFont,playing?TEAL:MUTED);
 }
 void paint(HDC dc) {
     if(overlayMode) { paintWidget(dc); return; }
     RECT r; GetClientRect(window,&r); FillRect(dc,&r,bgBrush);
-    drawText(dc,L"Pulse",24,13,180,40,titleFont,INK);
-    drawText(dc,L"Find your time.",124,24,220,24,font,MUTED);
+    box(dc,24,20,6,28,TEAL,6);
+    drawText(dc,L"PULSE",42,13,180,40,titleFont,INK);
+    drawText(dc,L"Find your rhythm.",158,24,190,24,font,MUTED);
     drawText(dc,systemVolumeLabel,360,7,278,22,smallFont,MUTED);
     box(dc,24,72,852,144,PANEL);
     drawText(dc,L"QUARTER-NOTE BPM",44,80,225,20,smallFont,MUTED);
     const auto& b=settings.sequence?settings.bars[playing?currentStep:selected]:settings.simple;
     drawText(dc,std::to_wstring(b.beats)+L"/"+std::to_wstring(b.unit),320,86,76,32,beatFont,INK);
-    std::wstring detail=settings.sequence?L"Step "+std::to_wstring((playing?currentStep:selected)+1)+L" of "+std::to_wstring(settings.bars.size()):L"Repeats forever";
+    std::wstring detail=settings.sequence?L"Step "+std::to_wstring((playing?currentStep:selected)+1)+L" of "+std::to_wstring(settings.bars.size()):L"STEADY PULSE  /  LOOPS FOREVER";
     if(playing&&settings.sequence) detail+=b.repeats?L"  ·  Bar "+std::to_wstring(currentRepeat+1)+L"/"+std::to_wstring(b.repeats):L"  ·  Forever";
     drawText(dc,detail,397,88,264,28,smallFont,MUTED);
     int cols=std::min(b.beats,16),gap=5,cw=std::min(48,(330-(cols-1)*gap)/cols);
@@ -307,8 +401,8 @@ void paint(HDC dc) {
     for(int i=0;i<b.beats;++i) {
         bool accent=settings.accents&&std::find(accents.begin(),accents.end(),i)!=accents.end(); bool active=playing&&i==currentBeat;
         int x=320+(i%16)*(cw+gap),y=126+(i/16)*33;
-        box(dc,x,y,cw,28,active?(currentSilent?RGB(182,121,24):TEAL):(accent?RGB(211,234,227):LINE),8);
-        drawText(dc,std::to_wstring(i+1),x,y,cw,28,cw<25?smallFont:font,active?PANEL:INK,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        box(dc,x,y,cw,28,active?(currentSilent?RGB(182,121,24):TEAL):(accent?RGB(76,94,57):LINE),8);
+        drawText(dc,std::to_wstring(i+1),x,y,cw,28,cw<25?smallFont:font,active?ON_ACCENT:INK,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     std::wstring pulseHint=settings.accents?L"Accents: "+widen(pulse::groupText(b)):L"Accents off — equal clicks";
     if(playing&&b.bpm) pulseHint+=L"  ·  "+std::to_wstring(b.bpm)+L" BPM";
@@ -317,19 +411,19 @@ void paint(HDC dc) {
     if(!toolsPage) {
         if(settings.sequence) drawText(dc,L"Your sequence  ·  loops continuously",44,296,370,27,font,INK);
         else {
-            drawText(dc,L"One steady meter",44,303,350,32,beatFont,INK);
-            drawText(dc,L"Set a tempo, choose a meter, and press Start.",44,348,364,22,font,MUTED);
-            drawText(dc,L"The metronome keeps going until you stop it.",44,379,364,22,font,MUTED);
-            drawText(dc,L"For changing meters, switch to Sequence.",44,411,364,22,font,MUTED);
+            drawText(dc,L"Make time for practice.",44,303,350,32,beatFont,INK);
+            drawText(dc,L"One meter. A clear head. A steady pulse.",44,348,364,22,font,MUTED);
+            drawText(dc,L"Choose a meter. We’ll keep time.",44,379,364,22,font,MUTED);
+            drawText(dc,L"Want a change? Explore the Presets dropdown.",44,411,364,22,font,MUTED);
         }
         drawText(dc,L"Beats",444,301,90,22,smallFont,MUTED);
         drawText(dc,L"Note value",538,301,100,22,smallFont,MUTED);
         drawText(dc,L"Accent groups",650,301,200,22,smallFont,MUTED);
-        drawText(dc,L"For 7/8, try 2+2+3. Leave blank for a first-beat accent.",444,367,408,34,smallFont,MUTED,DT_LEFT|DT_WORDBREAK);
+        drawText(dc,L"Grouping is used only with accents on. Try 2+2+3 for 7/8.",444,367,408,34,smallFont,MUTED,DT_LEFT|DT_WORDBREAK);
         if(settings.sequence) {
             drawText(dc,L"Bars per step",444,399,130,22,smallFont,MUTED);
             drawText(dc,L"Step BPM (0 = main)",697,399,160,22,smallFont,MUTED);
-        } else drawText(dc,L"This meter repeats indefinitely.",444,423,400,25,font,TEAL);
+        } else drawText(dc,L"∞   Keep going. This meter loops forever.",444,423,400,25,font,TEAL);
     } else {
         drawText(dc,L"Subdivisions per beat",44,303,220,22,smallFont,MUTED);
         drawText(dc,L"Second pulse per bar",320,303,220,22,smallFont,MUTED);
@@ -340,28 +434,50 @@ void paint(HDC dc) {
         drawText(dc,L"Turn off Accent beats for the same tone and volume on every click.",44,496,786,20,smallFont,MUTED);
     }
     drawText(dc,notice,24,535,852,34,font,TEAL,DT_LEFT|DT_WORDBREAK);
-    drawText(dc,L"Space  start / stop       T  tap tempo       Ctrl+S  save       Ctrl+O  open",24,577,852,20,smallFont,MUTED);
+    drawText(dc,L"SPACE  play / pause     T  tap tempo     CTRL+S  save     CTRL+O  open                                      PULSE / STUDIO",24,577,852,20,smallFont,MUTED);
 }
 void drawButton(DRAWITEMSTRUCT* d) {
+    if(d->CtlType==ODT_MENU) {
+        HBRUSH brush=CreateSolidBrush(d->itemState&ODS_SELECTED?LINE:PANEL); FillRect(d->hDC,&d->rcItem,brush); DeleteObject(brush);
+        RECT r=d->rcItem; r.left+=px(16); r.right-=px(16); SelectObject(d->hDC,font); SetBkMode(d->hDC,TRANSPARENT); SetTextColor(d->hDC,d->itemState&ODS_SELECTED?TEAL:INK);
+        DrawTextW(d->hDC,reinterpret_cast<const wchar_t*>(d->itemData),-1,&r,DT_VCENTER|DT_SINGLELINE); return;
+    }
+    if(d->CtlType==ODT_COMBOBOX) {
+        HBRUSH brush=CreateSolidBrush(d->itemState&ODS_SELECTED?LINE:PANEL); FillRect(d->hDC,&d->rcItem,brush); DeleteObject(brush);
+        if(d->itemID==static_cast<UINT>(-1)) return;
+        wchar_t label[256]{}; SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,reinterpret_cast<LPARAM>(label));
+        RECT r=d->rcItem; r.left+=px(10); SelectObject(d->hDC,font); SetBkMode(d->hDC,TRANSPARENT); SetTextColor(d->hDC,INK);
+        DrawTextW(d->hDC,label,-1,&r,DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); return;
+    }
     if(d->CtlID==Steps) {
         if(d->itemID==static_cast<UINT>(-1)) return;
-        COLORREF color=(d->itemState&ODS_SELECTED)?RGB(220,240,233):PANEL; HBRUSH b=CreateSolidBrush(color); FillRect(d->hDC,&d->rcItem,b); DeleteObject(b);
+        COLORREF color=(d->itemState&ODS_SELECTED)?LINE:PANEL; HBRUSH b=CreateSolidBrush(color); FillRect(d->hDC,&d->rcItem,b); DeleteObject(b);
         std::array<wchar_t,256> label{}; SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,reinterpret_cast<LPARAM>(label.data()));
         RECT r=d->rcItem; r.left+=px(12); SelectObject(d->hDC,font); SetBkMode(d->hDC,TRANSPARENT); SetTextColor(d->hDC,(d->itemState&ODS_DISABLED)?MUTED:INK); DrawTextW(d->hDC,label.data(),-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(d->itemState&ODS_FOCUS) DrawFocusRect(d->hDC,&d->rcItem);
         return;
     }
-    bool primary=d->CtlID==Start || (d->CtlID==RhythmTab&&!toolsPage) || (d->CtlID==ToolsTab&&toolsPage);
-    COLORREF color=primary?TEAL:LINE;
-    if(d->itemState&ODS_SELECTED) color=primary?RGB(9,86,72):RGB(202,213,218);
-    if(d->itemState&ODS_DISABLED) color=PANEL;
-    HBRUSH brush=CreateSolidBrush(color); FillRect(d->hDC,&d->rcItem,brush); DeleteObject(brush);
-    auto s=value(d->CtlID); SelectObject(d->hDC,font); SetTextColor(d->hDC,(d->itemState&ODS_DISABLED)?MUTED:primary?PANEL:INK); SetBkMode(d->hDC,TRANSPARENT);
+    bool primary=d->CtlID==Start;
+    bool tab=d->CtlID==RhythmTab || d->CtlID==ToolsTab;
+    bool selected=(d->CtlID==RhythmTab&&!toolsPage)||(d->CtlID==ToolsTab&&toolsPage);
+    bool disabled=d->itemState&ODS_DISABLED;
+    POINT point; RECT screen; GetCursorPos(&point); GetWindowRect(d->hwndItem,&screen); bool hover=PtInRect(&screen,point);
+    COLORREF color=primary?TEAL:selected?LINE:tab?BG:LINE;
+    if(hover&&!disabled) color=primary?RGB(209,255,143):LINE;
+    if(d->itemState&ODS_SELECTED) color=primary?RGB(164,218,85):RGB(54,67,85);
+    bool inPanel=!overlayMode&&(d->CtlID==Minus||d->CtlID==Plus||d->CtlID==Tap||d->CtlID==Start||d->CtlID==NextStep||d->CtlID==Apply||d->CtlID==Add||d->CtlID==Remove||d->CtlID==Up||d->CtlID==Down||d->CtlID==Example);
+    HBRUSH bg=CreateSolidBrush(inPanel?PANEL:BG); FillRect(d->hDC,&d->rcItem,bg); DeleteObject(bg);
+    HBRUSH brush=CreateSolidBrush(disabled?(inPanel?PANEL:BG):color); auto oldB=SelectObject(d->hDC,brush); auto oldP=SelectObject(d->hDC,GetStockObject(NULL_PEN));
+    RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,px(10),px(10));
+    SelectObject(d->hDC,oldB); SelectObject(d->hDC,oldP); DeleteObject(brush);
+    auto s=value(d->CtlID); SelectObject(d->hDC,font); SetTextColor(d->hDC,disabled?MUTED:primary?ON_ACCENT:selected?TEAL:INK); SetBkMode(d->hDC,TRANSPARENT);
     DrawTextW(d->hDC,s.c_str(),-1,&d->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     if(d->itemState&ODS_FOCUS) { RECT r=d->rcItem; InflateRect(&r,-4,-4); DrawFocusRect(d->hDC,&r); }
 }
+
 void command(int id,int code) {
     if(populating) return;
+    if(id==Presets&&code==BN_CLICKED) { presetMenu(); return; }
     if(code==BN_CLICKED) {
         if(id==CycleView) { setView((viewMode+1)%3); return; }
         if(id==MinimizeWidget) { ShowWindow(window,SW_MINIMIZE); return; }
@@ -446,8 +562,8 @@ void visibility() {
         int id=GetDlgCtrlID(c.hwnd);
         bool widget=id==FullEditor||id==Opacity||id==PositionLock||id==CloseWidget||id==MinimizeWidget;
         bool shared=id==Start||id==Bpm||id==Minus||id==Plus||id==Tap||id==NextStep;
-        bool tiny=id==Bpm||id==Start||id==Meter||id==PositionLock||id==MinimizeWidget||id==CycleView||id==CloseWidget;
-        bool visible=viewMode==0?tiny:overlayMode?(widget||shared||id==CycleView):(!widget&&id!=Meter);
+        bool tiny=id==Presets||id==Bpm||id==Start||id==Meter||id==PositionLock||id==MinimizeWidget||id==CycleView||id==CloseWidget;
+        bool visible=viewMode==0?tiny:overlayMode?(widget||shared||id==CycleView||id==Presets):(!widget&&id!=Meter&&id!=Save&&id!=Load);
         ShowWindow(c.hwnd,visible?SW_SHOW:SW_HIDE);
     }
     if(overlayMode) {
@@ -465,17 +581,19 @@ void visibility() {
 }
 void arrange() {
     SendMessageW(control(Bpm),WM_SETFONT,reinterpret_cast<WPARAM>(viewMode==0?beatFont:numberFont),TRUE);
+    SendMessageW(control(Bpm),EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELPARAM(px(viewMode==0?2:8),px(2)));
     if(overlayMode) {
         auto move=[](int id,int x,int y,int w,int h) { SetWindowPos(control(id),nullptr,px(x),px(y),px(w),px(h),SWP_NOZORDER|SWP_NOACTIVATE); };
         if(viewMode==0) {
-            move(Bpm,30,6,58,32); move(Meter,94,8,70,240); move(Start,170,8,54,28);
-            move(PositionLock,230,8,48,28); move(MinimizeWidget,284,8,28,28);
-            move(CycleView,318,8,50,28); move(CloseWidget,374,8,28,28);
+            move(Bpm,28,10,54,32); move(Meter,90,10,64,240); move(Presets,162,10,90,32); move(Start,260,10,60,32);
+            move(PositionLock,328,10,52,32); move(MinimizeWidget,388,10,28,32);
+            move(CycleView,424,10,50,32); move(CloseWidget,482,10,28,32);
         } else {
-            move(FullEditor,112,10,54,28); move(CycleView,170,10,44,28); move(Opacity,218,10,52,28);
-            move(PositionLock,274,10,52,28); move(MinimizeWidget,330,10,24,28); move(CloseWidget,358,10,26,28);
-            move(Bpm,16,64,140,58); move(Minus,164,72,32,36); move(Plus,202,72,32,36);
-            move(Tap,244,82,60,32); move(Start,312,78,72,40); move(NextStep,274,180,110,30);
+            move(Presets,268,12,134,32);
+            move(FullEditor,18,250,72,28); move(CycleView,98,250,48,28); move(Opacity,154,250,58,28);
+            move(PositionLock,220,250,64,28); move(MinimizeWidget,292,250,44,28); move(CloseWidget,344,250,58,28);
+            move(Bpm,18,78,136,58); move(Minus,166,90,36,36); move(Plus,210,90,36,36);
+            move(Tap,268,128,134,32); move(Start,268,76,134,44); move(NextStep,280,212,122,28);
         }
         RedrawWindow(window,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_FRAME); return;
     }
@@ -529,8 +647,8 @@ void setView(int next) {
 LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
     switch(message) {
         case WM_CREATE: {
-            window=hwnd; scale=GetDpiForWindow(hwnd)/96.f; bgBrush=CreateSolidBrush(BG); panelBrush=CreateSolidBrush(PANEL); setFonts();
-            BOOL dark=FALSE; DwmSetWindowAttribute(hwnd,20,&dark,sizeof(dark));
+            window=hwnd; scale=GetDpiForWindow(hwnd)/96.f; bgBrush=CreateSolidBrush(BG); panelBrush=CreateSolidBrush(PANEL); fieldBrush=CreateSolidBrush(LINE); setFonts();
+            BOOL dark=TRUE; DwmSetWindowAttribute(hwnd,20,&dark,sizeof(dark));
             button(L"Widget",Overlay,322,236,100,34);
             button(L"Size",CycleView,430,236,80,34);
             button(L"−",MinimizeWidget,0,0,28,28);
@@ -541,7 +659,7 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
             button(L"100%",Opacity,0,0,58,28);
             button(L"Lock",PositionLock,0,0,52,28);
             button(L"×",CloseWidget,0,0,32,28);
-            button(L"Open…",Load,652,18,102,34); button(L"Save…",Save,766,18,110,34);
+            button(L"Presets  ⌄",Presets,690,18,186,34);
             edit(L"120",Bpm,44,104,140);
             controls.back().h=60; SetWindowPos(control(Bpm),nullptr,px(44),px(104),px(140),px(60),SWP_NOZORDER);
             SendMessageW(control(Bpm),WM_SETFONT,reinterpret_cast<WPARAM>(numberFont),TRUE);
@@ -558,15 +676,17 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
             edit(L"4",Beats,444,330,78); combo(Unit,538,330,94,{L"/ 2",L"/ 4",L"/ 8",L"/ 16"},1); edit(L"4",Groups,650,330,202);
             edit(L"1",Repeats,444,426,90);
             make(L"BUTTON",L"Forever",Forever,548,426,128,32,BS_AUTOCHECKBOX);
+            SetWindowSubclass(control(Forever),checkVisual,4,0);
             edit(L"0",StepTempo,697,426,155);
             button(L"Apply rhythm",Apply,444,476,408,32);
             combo(Subdivision,44,335,236,{L"1 — Beat",L"2 — Halves",L"3 — Triplets",L"4 — Quarters"},0);
             edit(L"0",Poly,320,335,236); edit(L"0",Mute,596,335,256);
-            combo(Sound,44,426,236,{L"Clean tone",L"Woodblock",L"Bright click",L"Full click — longer"},0); edit(L"70",Volume,320,426,64);
+            combo(Sound,44,426,236,{L"Clean tone",L"Woodblock",L"Bright click",L"Full click — longer"},0); edit(L"200",Volume,320,426,64);
             make(TRACKBAR_CLASSW,L"Metronome volume, 0 to 400 percent",VolumeSlider,392,426,164,32,TBS_HORZ|TBS_NOTICKS);
             SendMessageW(control(VolumeSlider),TBM_SETRANGE,TRUE,MAKELPARAM(0,400));
             SendMessageW(control(VolumeSlider),TBM_SETPAGESIZE,0,10);
             make(L"BUTTON",L"Accent beats",Accents,596,426,256,32,BS_AUTOCHECKBOX);
+            SetWindowSubclass(control(Accents),checkVisual,4,0);
             make(TRACKBAR_CLASSW,L"Windows volume",SystemVolumeSlider,360,30,270,26,TBS_HORZ|TBS_NOTICKS);
             SendMessageW(control(SystemVolumeSlider),TBM_SETRANGE,TRUE,MAKELPARAM(0,100));
             SendMessageW(control(SystemVolumeSlider),TBM_SETPAGESIZE,0,5);
@@ -581,6 +701,29 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
         case WM_SYSCOMMAND:
             if(overlayMode && positionLocked && (wp&0xfff0)==SC_MOVE) return 0;
             break;
+        case WM_NOTIFY: {
+            auto notification=reinterpret_cast<NMHDR*>(lp);
+            if(notification->code==NM_CUSTOMDRAW && (notification->idFrom==VolumeSlider||notification->idFrom==SystemVolumeSlider)) {
+                auto draw=reinterpret_cast<NMCUSTOMDRAW*>(lp);
+                if(draw->dwDrawStage==CDDS_PREPAINT) { FillRect(draw->hdc,&draw->rc,panelBrush); return CDRF_NOTIFYITEMDRAW; }
+                if(draw->dwDrawStage==CDDS_ITEMPREPAINT) {
+                    if(draw->dwItemSpec==TBCD_CHANNEL) {
+                        RECT r=draw->rc; int center=(r.top+r.bottom)/2;
+                        HBRUSH brush=CreateSolidBrush(LINE); RECT line{r.left,center-px(2),r.right,center+px(2)}; FillRect(draw->hdc,&line,brush); DeleteObject(brush);
+                        int level=static_cast<int>(SendMessageW(notification->hwndFrom,TBM_GETPOS,0,0));
+                        int maximum=notification->idFrom==VolumeSlider?400:100;
+                        line.right=line.left+(line.right-line.left)*level/maximum;
+                        brush=CreateSolidBrush(TEAL); FillRect(draw->hdc,&line,brush); DeleteObject(brush); return CDRF_SKIPDEFAULT;
+                    }
+                    if(draw->dwItemSpec==TBCD_THUMB) {
+                        int x=(draw->rc.left+draw->rc.right)/2, y=(draw->rc.top+draw->rc.bottom)/2;
+                        HBRUSH brush=CreateSolidBrush(TEAL); auto oldB=SelectObject(draw->hdc,brush); auto oldP=SelectObject(draw->hdc,GetStockObject(NULL_PEN));
+                        Ellipse(draw->hdc,x-px(6),y-px(6),x+px(6),y+px(6)); SelectObject(draw->hdc,oldB); SelectObject(draw->hdc,oldP); DeleteObject(brush); return CDRF_SKIPDEFAULT;
+                    }
+                }
+            }
+            break;
+        }
         case WM_HSCROLL:
             if(reinterpret_cast<HWND>(lp)==control(VolumeSlider)) {
                 settings.volume=static_cast<int>(SendMessageW(control(VolumeSlider),TBM_GETPOS,0,0));
@@ -597,8 +740,11 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
         case WM_PULSE_BEAT: if(playing) { currentBeat=LOWORD(wp); currentStep=HIWORD(wp); currentRepeat=LOWORD(lp); currentSilent=HIWORD(lp)!=0; syncMeter(); InvalidateRect(hwnd,nullptr,FALSE); } return 0;
         case WM_PULSE_ERROR: if(playing) { stop(); wchar_t messageText[256]; swprintf(messageText,256,L"Could not play audio (0x%08lX). Check your default Windows output device, then press Start to reconnect.",static_cast<unsigned long>(wp)); status(messageText); MessageBoxW(hwnd,messageText,L"Audio unavailable",MB_OK|MB_ICONWARNING); } return 0;
         case WM_DRAWITEM: drawButton(reinterpret_cast<DRAWITEMSTRUCT*>(lp)); return TRUE;
-        case WM_MEASUREITEM: reinterpret_cast<MEASUREITEMSTRUCT*>(lp)->itemHeight=px(38); return TRUE;
-        case WM_CTLCOLOREDIT: case WM_CTLCOLORLISTBOX: case WM_CTLCOLORSTATIC: { HDC dc=reinterpret_cast<HDC>(wp); SetBkColor(dc,PANEL); SetTextColor(dc,INK); return reinterpret_cast<LRESULT>(panelBrush); }
+        case WM_MEASUREITEM: { auto item=reinterpret_cast<MEASUREITEMSTRUCT*>(lp); item->itemHeight=px(item->CtlType==ODT_COMBOBOX?30:38);
+            if(item->CtlType==ODT_MENU) item->itemWidth=px(340);
+            return TRUE; }
+        case WM_CTLCOLOREDIT: { HDC dc=reinterpret_cast<HDC>(wp); bool tempo=GetDlgCtrlID(reinterpret_cast<HWND>(lp))==Bpm; SetBkColor(dc,tempo?PANEL:LINE); SetTextColor(dc,INK); return reinterpret_cast<LRESULT>(tempo?panelBrush:fieldBrush); }
+        case WM_CTLCOLORBTN: case WM_CTLCOLORLISTBOX: case WM_CTLCOLORSTATIC: { HDC dc=reinterpret_cast<HDC>(wp); SetBkColor(dc,PANEL); SetTextColor(dc,INK); return reinterpret_cast<LRESULT>(panelBrush); }
         case WM_PRINTCLIENT: paint(reinterpret_cast<HDC>(wp)); SetViewportOrgEx(reinterpret_cast<HDC>(wp),0,0,nullptr); return 0;
         case WM_ERASEBKGND: { RECT r; GetClientRect(hwnd,&r); FillRect(reinterpret_cast<HDC>(wp),&r,bgBrush); return 1; }
         case WM_SIZE: if(window) arrange(); return 0;
@@ -641,5 +787,5 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int show) {
         if(!handled&&!IsDialogMessageW(hwnd,&msg)) { TranslateMessage(&msg); DispatchMessageW(&msg); }
 
     }
-    audio.stop(); for(HFONT f:{font,smallFont,titleFont,numberFont,beatFont}) DeleteObject(f); DeleteObject(bgBrush); DeleteObject(panelBrush); return 0;
+    audio.stop(); for(HFONT f:{font,smallFont,titleFont,numberFont,beatFont}) DeleteObject(f); DeleteObject(bgBrush); DeleteObject(panelBrush); DeleteObject(fieldBrush); return 0;
 }

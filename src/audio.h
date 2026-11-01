@@ -15,9 +15,9 @@ class Audio {
     HANDLE stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     std::atomic<bool> active{false};
     std::atomic<bool> advance{false};
-    std::atomic<bool> requestedAccents{true};
+    std::atomic<bool> requestedAccents{false};
     std::atomic<int> requestedBpm{120};
-    std::atomic<int> requestedVolume{70};
+    std::atomic<int> requestedVolume{200};
     std::atomic<int> requestedSound{0};
     template<class T> struct Com {
         T* p = nullptr;
@@ -60,7 +60,10 @@ class Audio {
                         while (index < events.size() && events[index].frame <= frame) {
                             if (!events[index].poly && events[index].accent > 0) {
                                 int bpm = requestedBpm.load(std::memory_order_relaxed);
-                                if (bpm != timeline.config().bpm) timeline.changeTempo(bpm, events, index);
+                                if (bpm != timeline.config().bpm) {
+                                    timeline.changeTempo(bpm, events, index);
+                                    settings.bpm=bpm;
+                                }
                             }
                             settings.sound = requestedSound.load(std::memory_order_relaxed);
                             settings.volume = requestedVolume.load(std::memory_order_relaxed);

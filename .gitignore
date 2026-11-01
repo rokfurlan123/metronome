@@ -3,3 +3,17 @@
 /docs/*.bmp
 /docs/preview.png
 /docs/small-window.png
+
+# Native review captures retain PNGs, not uncompressed scratch bitmaps.
+/docs/design-review/**/*.bmp
+
+# Never stage credentials, local environments or assistant/runtime state.
+.env
+.env.*
+!.env.example
+.secrets/
+*.pem
+*.key
+/.codex/
+/.claude/
+__pycache__/

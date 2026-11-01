@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <sstream>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,8 +14,8 @@ struct Bar {
     std::vector<int> groups{4};
 };
 struct Settings {
-    int bpm = 120, subdivision = 1, poly = 0, mute = 0, volume = 70, sound = 0;
-    bool sequence = false, accents = true;
+    int bpm = 120, subdivision = 1, poly = 0, mute = 0, volume = 200, sound = 0;
+    bool sequence = false, accents = false;
     Bar simple;
     std::vector<Bar> bars{{4,4,2,0,{4}}, {7,8,2,0,{2,2,3}}, {3,4,2,0,{3}}};
 };
@@ -60,6 +61,7 @@ inline Settings load(std::istream& in) {
     if (!(in >> magic >> version) || magic != "PULSE" || (version < 1 || version > 5)) throw std::runtime_error("This is not a supported Pulse preset.");
     if (!(in >> s.bpm >> s.subdivision >> s.poly >> s.mute >> s.volume >> s.sound >> seq) || (seq != 0 && seq != 1)) throw std::runtime_error("Incomplete preset settings.");
     s.sequence = seq;
+    s.accents = true; // Formats 1–2 predate this preference; preserve their sound.
     if (version >= 3) {
         int accents;
         if (!(in >> accents) || (accents != 0 && accents != 1)) throw std::runtime_error("Invalid accent setting.");
@@ -133,6 +135,34 @@ inline int framesUntilNextClick(const std::vector<Event>& events,size_t index,in
     }
     return static_cast<int>(std::clamp<int64_t>(end-events[index].frame,1,2147483647));
 }
+// Use one envelope length throughout the active practice, not a different tail
+// for each gap. Irregular second-pulse gaps otherwise create unintended accents.
+inline int flatClickFrames(const Settings& s, int rate = 48000) {
+    long double shortest = rate;
+    auto measure = [&](const Bar& b) {
+        int main = b.beats * s.subdivision;
+        int slots = s.poly ? std::lcm(main, s.poly) : main;
+        int bpm = b.bpm ? b.bpm : s.bpm;
+        long double frames = static_cast<long double>(rate) * 60 * 4 * b.beats / (bpm * b.unit * slots);
+        shortest = std::min(shortest, frames);
+    };
+    if(s.sequence) { for(const auto& b:s.bars) measure(b); } else measure(s.simple);
+    // Floor is deliberate: fractional scheduling can round adjacent gaps down.
+    return std::max(1, static_cast<int>(std::floor(shortest + 1e-9L)));
+}
+// Built-in practices preserve the user's current tempo, sound and level.
+inline Settings practicePreset(const Settings& current, int index) {
+    Settings s=current;
+    s.sequence=false; s.subdivision=1; s.poly=0; s.mute=0;
+    switch(index) {
+        case 0: s.simple={4,4,1,0,{4}}; break;
+        case 1: s.simple={3,4,1,0,{3}}; break;
+        case 2: s.simple={7,8,1,0,{2,2,3}}; break;
+        case 3: s.sequence=true; s.bars={{4,4,2,0,{4}},{7,8,2,0,{2,2,3}},{3,4,2,0,{3}}}; break;
+        default: throw std::runtime_error("Unknown practice preset.");
+    }
+    validate(s); return s;
+}
 class Synth {
     struct Voice { int age, sound; double hz, gain; int duration; bool shortened; };
     std::vector<Voice> voices;
@@ -148,7 +178,11 @@ public:
         double hz = !s.accents ? 1174 : e.poly ? 620 : (e.accent == 2 ? 1760 : e.accent == 1 ? 1174 : 830);
         double gain = (!s.accents ? .42 : e.poly ? .28 : e.accent == 2 ? .65 : e.accent == 1 ? .42 : .18) * s.volume / 100.;
         int natural=rate/(s.sound==3?10:20)+1;
-        int duration=!s.accents&&untilNext>0?std::min(natural,untilNext):natural;
+        int duration=natural;
+        if(!s.accents) {
+            duration=std::min(natural,flatClickFrames(s,rate));
+            if(untilNext>0) duration=std::min(duration,untilNext);
+        }
         voices.push_back({0, s.sound, hz, gain,duration,duration<natural});
     }
     float sample() {

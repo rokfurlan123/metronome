@@ -66,8 +66,9 @@ int main() {
         clickAt(control(ToolsTab));
         if(!IsWindowEnabled(control(Accents))) throw std::runtime_error("Accents disabled during playback");
         clickAt(control(Accents));
-        if(SendMessageW(control(Accents),BM_GETCHECK,0,0)!=BST_UNCHECKED) throw std::runtime_error("Accent checkbox failed");
+        if(SendMessageW(control(Accents),BM_GETCHECK,0,0)!=BST_CHECKED) throw std::runtime_error("Accent enable checkbox failed");
         clickAt(control(Accents));
+        if(SendMessageW(control(Accents),BM_GETCHECK,0,0)!=BST_UNCHECKED) throw std::runtime_error("Accent disable checkbox failed");
         typeTempo(L"299"); Sleep(400); clickAt(control(Plus)); clickAt(control(Plus));
         if(tempoValue()!=300) throw std::runtime_error("Upper tempo limit failed");
         typeTempo(L"20"); Sleep(400); clickAt(control(Minus));
