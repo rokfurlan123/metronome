@@ -3,3 +3,5 @@
 /docs/*.bmp
 /docs/preview.png
 /docs/small-window.png
+__pycache__/
+*.py[cod]

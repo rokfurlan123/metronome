@@ -1,0 +1,77 @@
+{
+  "cases": [
+    {
+      "case": "live137",
+      "clicks": 121,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live199",
+      "clicks": 175,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live300",
+      "clicks": 266,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live137_return",
+      "clicks": 121,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live_gain400",
+      "clicks": 121,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live_sound2",
+      "clicks": 122,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "positive_control_live",
+      "clicks": 122,
+      "rms_spread_db": 8.354835000000001,
+      "peak_spread_db": 3.6617919999999984,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live_accents_off",
+      "clicks": 121,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "live_restore200",
+      "clicks": 121,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    }
+  ],
+  "failures": []
+}

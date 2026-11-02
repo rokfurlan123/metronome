@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -133,6 +134,23 @@ inline int framesUntilNextClick(const std::vector<Event>& events,size_t index,in
     }
     return static_cast<int>(std::clamp<int64_t>(end-events[index].frame,1,2147483647));
 }
+// One envelope for every unaccented click in a practice. A per-event gap cap
+// changes tail energy on irregular grids (second pulse, rounding, meter loops).
+// The union of main/subdivision and second-pulse onsets lies on this LCM grid.
+// Use its shortest possible gap across all steps, even when beats are silent.
+inline int flatClickFrames(const Settings& s, int rate=48000) {
+    long double shortest=rate;
+    auto measure=[&](const Bar& b) {
+        int main=b.beats*s.subdivision;
+        int slots=s.poly?std::lcm(main,s.poly):main;
+        int bpm=b.bpm?b.bpm:s.bpm;
+        long double frames=static_cast<long double>(rate)*60*4*b.beats/(bpm*b.unit*slots);
+        shortest=std::min(shortest,frames);
+    };
+    if(s.sequence) {for(const auto& b:s.bars) measure(b);} else measure(s.simple);
+    // Scheduling rounds absolute times; consecutive rounded gaps can be floor(gap).
+    return std::max(1,static_cast<int>(std::floor(shortest+1e-9L)));
+}
 class Synth {
     struct Voice { int age, sound; double hz, gain; int duration; bool shortened; };
     std::vector<Voice> voices;
@@ -148,7 +166,11 @@ public:
         double hz = !s.accents ? 1174 : e.poly ? 620 : (e.accent == 2 ? 1760 : e.accent == 1 ? 1174 : 830);
         double gain = (!s.accents ? .42 : e.poly ? .28 : e.accent == 2 ? .65 : e.accent == 1 ? .42 : .18) * s.volume / 100.;
         int natural=rate/(s.sound==3?10:20)+1;
-        int duration=!s.accents&&untilNext>0?std::min(natural,untilNext):natural;
+        int duration=natural;
+        if(!s.accents) {
+            duration=std::min(natural,flatClickFrames(s,rate));
+            if(untilNext>0) duration=std::min(duration,untilNext);
+        }
         voices.push_back({0, s.sound, hz, gain,duration,duration<natural});
     }
     float sample() {

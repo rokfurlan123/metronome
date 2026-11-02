@@ -25,7 +25,7 @@ function Require($condition,$message) { if (-not $condition) { throw $message };
 function Label($handle) { $b=New-Object System.Text.StringBuilder 100; [void][TinyVerify]::ReadText($handle,13,[IntPtr]100,$b); $b.ToString() }
 $link=Join-Path ([Environment]::GetFolderPath('Programs')) 'Pulse Metronome.lnk'
 $target=(New-Object -ComObject WScript.Shell).CreateShortcut($link).TargetPath
-Require ($target -like '*\Pulse\0.3.1\Pulse.exe') 'shortcut targets Pulse 0.3.1'
+Require ($target -like '*\Pulse\0.3.2\Pulse.exe') 'shortcut targets Pulse 0.3.2'
 $existing=@(Get-Process Pulse -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $target -and $_.MainWindowHandle -ne 0})
 if (-not $existing) { Start-Process -FilePath $link }
 for($i=0;$i -lt 40;$i++) {

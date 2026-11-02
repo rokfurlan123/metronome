@@ -11,6 +11,15 @@ int main() {
         pulse::Settings s;
         require(s.volume==200,"Fresh startup defaults to 200 percent metronome gain");
         require(!s.accents,"Fresh startup defaults to no accents");
+        require(pulse::flatClickFrames(s)==24000,"Sparse startup keeps the natural click tail");
+        {
+            auto grid=s;grid.bpm=300;grid.subdivision=4;grid.poly=15;grid.simple={7,16,1,0,{2,2,3}};
+            require(pulse::flatClickFrames(grid)==40,"Dense irregular grid has a fixed 40-frame envelope cap");
+            auto muted=grid;muted.mute=100;
+            require(pulse::flatClickFrames(muted)==40,"Silent beats cannot lengthen or emphasize remaining clicks");
+            grid.sequence=true;grid.bars={{4,4,1,120,{4}},{7,16,1,300,{2,2,3}},{3,8,1,0,{3}}};
+            require(pulse::flatClickFrames(grid)<=40,"Mixed-meter steps share one conservative envelope");
+        }
         {
             std::stringstream preset; pulse::save(preset,s); auto restored=pulse::load(preset);
             require(restored.volume==200&&!restored.accents,"Startup defaults survive preset round trip");

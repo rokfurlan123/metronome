@@ -1,0 +1,145 @@
+{
+  "cases": [
+    {
+      "case": "plain120_200",
+      "clicks": 22,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "plain160_200",
+      "clicks": 31,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound0_200",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound0_400",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound1_200",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound1_400",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound2_200",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound2_400",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound3_200",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "sound3_400",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "dense_poly0",
+      "clicks": 310,
+      "rms_spread_db": 0.0017669999999938568,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "dense_poly3",
+      "clicks": 333,
+      "rms_spread_db": 2.990793999999994,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "dense_poly5",
+      "clicks": 354,
+      "rms_spread_db": 5.088972999999996,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "dense_poly16",
+      "clicks": 443,
+      "rms_spread_db": 4.045095999999994,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "positive_control",
+      "clicks": 11,
+      "rms_spread_db": 3.663477999999998,
+      "peak_spread_db": 2.316089000000005,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "after_toggle",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    },
+    {
+      "case": "long160",
+      "clicks": 159,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0,
+      "inf_count": 0
+    }
+  ],
+  "failures": [
+    "dense_poly3: uneven RMS/peak",
+    "dense_poly5: uneven RMS/peak",
+    "dense_poly16: uneven RMS/peak"
+  ]
+}

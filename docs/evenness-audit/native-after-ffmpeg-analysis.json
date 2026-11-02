@@ -1,0 +1,141 @@
+{
+  "cases": [
+    {
+      "case": "plain120_200",
+      "clicks": 23,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "plain160_200",
+      "clicks": 30,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound0_200",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound0_400",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound1_200",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound1_400",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound2_200",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound2_400",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound3_200",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "sound3_400",
+      "clicks": 14,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "dense_poly0",
+      "clicks": 310,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "dense_poly3",
+      "clicks": 332,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "dense_poly5",
+      "clicks": 354,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "dense_poly16",
+      "clicks": 443,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "positive_control",
+      "clicks": 11,
+      "rms_spread_db": 3.663477999999998,
+      "peak_spread_db": 2.316089000000005,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "after_toggle",
+      "clicks": 15,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "long160",
+      "clicks": 158,
+      "rms_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    }
+  ],
+  "failures": []
+}

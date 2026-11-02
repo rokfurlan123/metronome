@@ -4,7 +4,7 @@ A native Windows desktop metronome for steady practice, changing meters, and lay
 
 ## Run
 
-Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.1-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.1\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts. Older version folders are retained.
+Pulse 0.3.2 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dist/Pulse.exe`, or extract `dist/Pulse-0.3.2-windows-x64.zip` and run `Pulse.exe`. This is an unsigned development build. Installed on this laptop at `%LOCALAPPDATA%\Programs\Pulse\0.3.2\Pulse.exe`, with Desktop **Pulse** and Start menu **Pulse Metronome** shortcuts. Older version folders are retained.
 
 ### Overlay views
 
@@ -19,7 +19,7 @@ Pulse 0.3.1 opens as a **tiny always-on-top bar** on Windows 10/11 x64. Run `dis
 
 The two overlays are intended to stay above ordinary windows; the full editor is a normal window. Exclusive-fullscreen games and Windows secure screens are not supported overlay targets.
 
-For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only after authorizing Windows changes**. It installs version 0.3.1 under `%LOCALAPPDATA%\Programs\Pulse\0.3.1` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
+For an optional per-user Windows installation and shortcuts, run `scripts/install-local.ps1` **only with Windows-file authorization** (routine updates to this existing installation have standing authorization). It installs version 0.3.2 under `%LOCALAPPDATA%\Programs\Pulse\0.3.2` and leaves older versions untouched. Building and packaging stay in Linux/WSL.
 
 ## Practice
 
@@ -29,7 +29,7 @@ For an optional per-user Windows installation and shortcuts, run `scripts/instal
 - **Metronome boost:** in **Practice tools**, drag **Metronome volume (0–400%)** or enter a value. Changes apply to the next click during playback; 0% is silent, 100% is normal gain, 200% doubles gain, and 400% quadruples gain before peak limiting. A soft limiter reduces clipping on louder or overlapping clicks. Boost is saved with the preset. Windows volume remains a separate 0–100% control.
 - **Full click — longer:** choose this under **Click sound** for a fuller tone with extra harmonics and a 100 ms tail (older sounds have 50 ms tails). Sound selection works during playback and is saved in presets. Combine it with the metronome boost when you need a stronger click.
 - **Windows volume:** drag the slider at the top left/right to change the computer’s default output volume (affects all apps). It works during playback and follows external Windows volume changes. The current Windows mute state is preserved and shown. This setting is not stored in presets; Metronome volume in Practice tools remains a separate app setting.
-- **Equal click sounds:** in **Practice tools**, uncheck **Accent beats**. Every click uses the same pitch and gain, including subdivisions and the second pulse. Coincident pulses become one click, and long tails fade before the next click to prevent overlap emphasis. Beat indicators also stop showing accent groups. This works during playback and is saved in presets. Older presets keep accents enabled.
+- **Equal click sounds:** in **Practice tools**, uncheck **Accent beats**. Every click uses the same pitch and gain, including subdivisions and the second pulse. Coincident pulses become one click. Every unaccented click uses the same waveform and fixed tail length throughout a practice, including irregular second-pulse grids, silent beats and mixed meters. Dense rhythms shorten all clicks consistently rather than changing the tail/energy from pulse to pulse. Live tempo changes update this shared envelope. Sparse standard clicks are unchanged. Beat indicators also stop showing accent groups. This works during playback and is saved in presets. Older presets keep accents enabled.
 - **Hold +/−:** one step immediately, then repeated steps after 400 ms, accelerating after 1.4 seconds. Release or move outside the button to stop. Works during playback, within 20–300 BPM.
 - **Accent groups:** for 7/8, enter `2+2+3` or `3+2+2`. Values must add up to the beat count. Leave blank to accent only the first beat.
 - **Repeats:** play each sequence step for 1–9999 bars, or check **Forever** to hold that meter indefinitely. During playback, **Next step** moves on at the next bar boundary. Standard metronome mode and the complete sequence already loop indefinitely. Step BPM `0` follows the main tempo; 20–300 sets a local tempo.
@@ -66,3 +66,7 @@ This first version has one optional second pulse, up to 128 sequence steps, and 
 Reference: [Time Guru by Avi Bortnick](https://www.avibortnick.com/timeguru.html), especially mixed-meter practice, tempo programs, and silent-beat exercises. Pulse is an independent implementation with its own interface and synthesized sounds.
 
 Closing Pulse exits immediately without an unsaved-changes prompt. Use Save before closing if you want to keep your practice settings.
+
+## Intensive audio evenness checks (0.3.2)
+
+`bash scripts/test-evenness.sh` runs the full-click matrix, measurement-tool self-tests, FFT/spectrogram analysis and a separate FFmpeg RMS/peak cross-check. See [audio audit methods, evidence and limits](docs/evenness-audit/README.md). Native Windows tests capture only the audit process, never the microphone or other applications; run the explicitly requested Windows capture separately with `scripts/test-evenness-windows.ps1`. These are development-aware digital measurements, not an acoustic listening guarantee.

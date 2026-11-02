@@ -36,3 +36,9 @@ Restored Wine 9.0~repack-4build3 locally under `/home/rokdbest/tools/pulse-test`
 ## Pulse 0.3.1 test change
 
 Click-through/global-hotkey behavior has been replaced by reversible position locking. The current UI harness no longer uses `--hotkey-conflict`; the earlier shortcut-conflict instructions apply only to 0.3.0. Use `scripts/test-ui.sh` for current tiny-bar meter, lock, minimize and view-cycle coverage. Existing Linux toolchain versions and paths are unchanged.
+
+## 2026-11-02 — Intensive audio-analysis tooling
+
+Installed a Linux-only venv at `/home/rokdbest/tools/pulse-audio-venv`; direct dependencies: NumPy 2.5.4, SciPy 1.18.1, Matplotlib 3.11.2. Pins: `tests/audio-requirements.txt`. System Pillow 10.2.0 was not changed; the venv has its own dependencies. Existing `/usr/bin/ffmpeg` is 6.1.1-3ubuntu5. No Windows compiler, system package update, or audio-device/effects reconfiguration was performed.
+
+`PULSE_AUDIO_PYTHON` overrides the venv interpreter for `scripts/test-evenness.sh`. Native audit binaries are compiled with the existing Linux MinGW toolchain. The native process-loopback test requires Windows build 20348+; the installed MinGW header set predates its small activation-parameter structure, so the test declares that documented three-DWORD ABI locally and statically asserts its size. No SDK/toolchain update was required. See `docs/evenness-audit/README.md` for capture/privacy limits and exact checks.

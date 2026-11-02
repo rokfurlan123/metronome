@@ -102,7 +102,7 @@ void acceptVolume(bool restoreInvalid=false) {
     }
 }
 void error(const std::exception& e) { MessageBoxW(window,widen(e.what()).c_str(),L"Check your rhythm",MB_OK|MB_ICONINFORMATION); }
-void title() { SetWindowTextW(window,dirty?L"Pulse 0.3.1 • unsaved changes":L"Pulse 0.3.1 — Metronome & mixed meters"); }
+void title() { SetWindowTextW(window,dirty?L"Pulse 0.3.2 • unsaved changes":L"Pulse 0.3.2 — Metronome & mixed meters"); }
 void changed() { dirty=true; title(); }
 HWND make(const wchar_t* cls, const wchar_t* label, int id,int x,int y,int w,int h,DWORD style) {
     HWND c=CreateWindowExW(0,cls,label,WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|style,px(x),px(y),px(w),px(h),window,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),GetModuleHandleW(nullptr),nullptr);

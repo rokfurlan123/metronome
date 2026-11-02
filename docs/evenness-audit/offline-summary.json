@@ -1,0 +1,16 @@
+{
+  "before": {
+    "cases": "3888",
+    "clicks": "343722",
+    "samples": "970899377",
+    "failing_flat_cases": "2904",
+    "worst_energy_spread_db": "15.8131629596"
+  },
+  "after": {
+    "cases": "3888",
+    "clicks": "343722",
+    "samples": "970899377",
+    "failing_flat_cases": "0",
+    "worst_energy_spread_db": "0"
+  }
+}

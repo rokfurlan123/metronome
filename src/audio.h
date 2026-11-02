@@ -60,7 +60,10 @@ class Audio {
                         while (index < events.size() && events[index].frame <= frame) {
                             if (!events[index].poly && events[index].accent > 0) {
                                 int bpm = requestedBpm.load(std::memory_order_relaxed);
-                                if (bpm != timeline.config().bpm) timeline.changeTempo(bpm, events, index);
+                                if (bpm != timeline.config().bpm) {
+                                    timeline.changeTempo(bpm, events, index);
+                                    settings.bpm=bpm; // Keep the fixed flat envelope in sync with live tempo.
+                                }
                             }
                             settings.sound = requestedSound.load(std::memory_order_relaxed);
                             settings.volume = requestedVolume.load(std::memory_order_relaxed);
