@@ -17,11 +17,12 @@ public class TinyVerify {
  [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
  [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")] public static extern IntPtr GetWindowLongPtr(IntPtr h,int index);
  [DllImport("user32.dll",CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h,StringBuilder text,int count);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode,EntryPoint="SendMessageW")] public static extern IntPtr ReadText(IntPtr h,uint m,IntPtr w,StringBuilder text);
 }
 '@
 [void][TinyVerify]::SetThreadDpiAwarenessContext([IntPtr](-4))
 function Require($condition,$message) { if (-not $condition) { throw $message }; Write-Output "PASS $message" }
-function Label($handle) { $b=New-Object System.Text.StringBuilder 100; [void][TinyVerify]::GetWindowText($handle,$b,100); $b.ToString() }
+function Label($handle) { $b=New-Object System.Text.StringBuilder 100; [void][TinyVerify]::ReadText($handle,13,[IntPtr]100,$b); $b.ToString() }
 $link=Join-Path ([Environment]::GetFolderPath('Programs')) 'Pulse Metronome.lnk'
 $target=(New-Object -ComObject WScript.Shell).CreateShortcut($link).TargetPath
 Require ($target -like '*\Pulse\0.3.1\Pulse.exe') 'shortcut targets Pulse 0.3.1'
@@ -36,6 +37,9 @@ Require ($null -ne $app) 'installed window launches'
 $h=$app.MainWindowHandle
 if ($existing -and -not $ResumeVerification) { Write-Output 'SKIP state changes in existing current-version window'; exit 0 }
 Start-Sleep -Milliseconds 300
+Require ((Label ([TinyVerify]::GetDlgItem($h,110))) -eq '200') 'fresh startup metronome volume is 200 percent'
+Require (([TinyVerify]::SendMessage([TinyVerify]::GetDlgItem($h,131),1024,[IntPtr]::Zero,[IntPtr]::Zero)).ToInt32() -eq 200) 'fresh startup volume slider is 200 percent'
+Require (([TinyVerify]::SendMessage([TinyVerify]::GetDlgItem($h,129),240,[IntPtr]::Zero,[IntPtr]::Zero)).ToInt32() -eq 0) 'fresh startup accents are off'
 Require ([TinyVerify]::IsWindowVisible([TinyVerify]::GetDlgItem($h,139))) 'tiny meter dropdown visible at launch'
 $r=New-Object TinyVerify+Rect
 [void][TinyVerify]::GetClientRect($h,[ref]$r)
