@@ -15,9 +15,9 @@ class Audio {
     HANDLE stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     std::atomic<bool> active{false};
     std::atomic<bool> advance{false};
-    std::atomic<bool> requestedAccents{true};
+    std::atomic<bool> requestedAccents{pulse::Settings{}.accents};
     std::atomic<int> requestedBpm{120};
-    std::atomic<int> requestedVolume{70};
+    std::atomic<int> requestedVolume{pulse::Settings{}.volume};
     std::atomic<int> requestedSound{0};
     template<class T> struct Com {
         T* p = nullptr;

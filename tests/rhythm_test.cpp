@@ -9,8 +9,17 @@ void rejects(const std::function<void()>& fn) { bool threw=false; try { fn(); } 
 int main() {
     try {
         pulse::Settings s;
+        require(s.volume==200,"Fresh startup defaults to 200 percent metronome gain");
+        require(!s.accents,"Fresh startup defaults to no accents");
+        {
+            std::stringstream preset; pulse::save(preset,s); auto restored=pulse::load(preset);
+            require(restored.volume==200&&!restored.accents,"Startup defaults survive preset round trip");
+            auto custom=s; custom.volume=70; custom.accents=true;
+            std::stringstream explicitPreset; pulse::save(explicitPreset,custom); restored=pulse::load(explicitPreset);
+            require(restored.volume==70&&restored.accents,"Explicit saved settings override startup defaults");
+        }
         for(int sound=0;sound<4;++sound) {
-            pulse::Settings flat; flat.sound=sound; flat.accents=false;
+            pulse::Settings flat; flat.sound=sound;
             std::stringstream preset; pulse::save(preset,flat);
             require(!pulse::load(preset).accents,"Accent preference survives save/load");
             for(auto event:std::vector<pulse::Event>{{0,0,2,false,false,0,0},{0,0,0,false,false,0,0},{0,0,1,true,false,0,0}}) {

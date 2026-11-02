@@ -13,8 +13,8 @@ struct Bar {
     std::vector<int> groups{4};
 };
 struct Settings {
-    int bpm = 120, subdivision = 1, poly = 0, mute = 0, volume = 70, sound = 0;
-    bool sequence = false, accents = true;
+    int bpm = 120, subdivision = 1, poly = 0, mute = 0, volume = 200, sound = 0;
+    bool sequence = false, accents = false;
     Bar simple;
     std::vector<Bar> bars{{4,4,2,0,{4}}, {7,8,2,0,{2,2,3}}, {3,4,2,0,{3}}};
 };
@@ -64,7 +64,7 @@ inline Settings load(std::istream& in) {
         int accents;
         if (!(in >> accents) || (accents != 0 && accents != 1)) throw std::runtime_error("Invalid accent setting.");
         s.accents = accents != 0;
-    }
+    } else s.accents = true; // Versions 1–2 predate the accent switch; preserve their sound.
     auto bar = [&]() { Bar b; std::string groups; if (!(in >> b.beats >> b.unit >> b.repeats >> b.bpm >> groups)) throw std::runtime_error("Incomplete bar in preset."); b.groups = parseGroups(groups, b.beats); validate(b); return b; };
     s.simple = bar(); int count;
     if (!(in >> count) || count < 1 || count > 128) throw std::runtime_error("Presets must contain 1–128 sequence steps.");

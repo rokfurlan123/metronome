@@ -30,7 +30,9 @@ void screenshot(const char* path,bool composite=false) {
     std::ofstream out(path,std::ios::binary); out.write(reinterpret_cast<char*>(&header),sizeof(header)); out.write(reinterpret_cast<char*>(&info.bmiHeader),sizeof(info.bmiHeader)); out.write(reinterpret_cast<char*>(pixels.data()),pixels.size());
     DeleteObject(bitmap); DeleteDC(mem); ReleaseDC(app,dc);
 }
-int main() {
+int main(int argc,char** argv) {
+    const bool baseline=argc>1&&std::string(argv[1])=="--startup-baseline";
+    const bool startupOnly=baseline||(argc>1&&std::string(argv[1])=="--startup-only");
     std::atomic<bool> exited{false};
     std::atomic<DWORD> guiId{0};
     std::thread gui([&] { guiId=GetCurrentThreadId(); wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW); exited=true; });
@@ -38,6 +40,29 @@ int main() {
     try {
         for(int i=0;i<100&&!app;++i) { if(guiId) EnumThreadWindows(guiId,[](HWND h,LPARAM)->BOOL { wchar_t cls[64]{}; GetClassNameW(h,cls,64); if(wcscmp(cls,L"PulseMetronome")==0) { app=h; return FALSE; } return TRUE; },0); Sleep(100); }
         require(app!=nullptr,"native window launches"); Sleep(300);
+        const std::wstring expectedVolume=baseline?L"70":L"200";
+        const int expectedCheck=baseline?BST_CHECKED:BST_UNCHECKED;
+        require(fieldText(Volume)==expectedVolume,"startup volume edit matches the default");
+        require(SendMessageW(item(VolumeSlider),TBM_GETPOS,0,0)==std::stoi(expectedVolume),"startup volume slider matches the default");
+        require(SendMessageW(item(Accents),BM_GETCHECK,0,0)==expectedCheck,"startup accent checkbox matches the default");
+        click(CycleView); click(CycleView); click(ToolsTab);
+        require(IsWindowVisible(item(Volume))&&IsWindowVisible(item(Accents)),"startup settings are visible in Practice tools");
+        screenshot(baseline?"docs/startup-before.bmp":"docs/startup-after.bmp",true);
+        click(RhythmTab); click(CycleView);
+        require(fieldText(Volume)==expectedVolume&&SendMessageW(item(Accents),BM_GETCHECK,0,0)==expectedCheck,"view changes preserve startup defaults");
+        if(startupOnly) {
+            click(CycleView); click(CycleView); click(ToolsTab);
+            click(Accents);
+            require(SendMessageW(item(Accents),BM_GETCHECK,0,0)!=expectedCheck,"accents remain manually configurable");
+            click(Accents);
+            set(Volume,L"150");
+            SendMessageW(app,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Volume)));
+            require(SendMessageW(item(VolumeSlider),TBM_GETPOS,0,0)==150,"manual volume still synchronizes the slider");
+            PostMessageW(app,WM_CLOSE,0,0);
+            for(int i=0;i<50&&!exited;++i) Sleep(100);
+            require(exited,"startup test closes without a confirmation prompt");
+            gui.join(); return 0;
+        }
         require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0,"widget starts always on top");
         require((GetWindowLongPtrW(app,GWL_STYLE)&WS_CAPTION)!=WS_CAPTION,"widget has no title bar");
         RECT tinyClient; GetClientRect(app,&tinyClient);

@@ -23,6 +23,7 @@ For an optional per-user Windows installation and shortcuts, run `scripts/instal
 
 ## Practice
 
+- **Startup defaults:** 200% metronome gain, accents off. These apply on every fresh launch; opening a saved preset keeps that preset's volume and accent choices. Windows system volume is not changed on startup.
 - **Standard metronome:** set 20–300 BPM, choose a time signature, and press Start.
 - **Mixed-meter sequence:** switch modes or choose **Try mixed meters**. Select each step to edit its meter, accent groups, repeat count, and optional tempo. Steps play in order and loop continuously.
 - **Metronome boost:** in **Practice tools**, drag **Metronome volume (0–400%)** or enter a value. Changes apply to the next click during playback; 0% is silent, 100% is normal gain, 200% doubles gain, and 400% quadruples gain before peak limiting. A soft limiter reduces clipping on louder or overlapping clicks. Boost is saved with the preset. Windows volume remains a separate 0–100% control.
