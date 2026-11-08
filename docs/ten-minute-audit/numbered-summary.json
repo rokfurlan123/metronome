@@ -1,0 +1,324 @@
+{
+  "analyzed_seconds": 600,
+  "clicks": 1599,
+  "by_beat": {
+    "1": {
+      "clicks": 399,
+      "mean_energy": 0.03791910767294547,
+      "energy_spread_db": 6.630633344732436,
+      "maximum_peak": 0.021373800933361053
+    },
+    "2": {
+      "clicks": 400,
+      "mean_energy": 0.037835025564028034,
+      "energy_spread_db": 13.611387774365177,
+      "maximum_peak": 0.021373800933361053
+    },
+    "3": {
+      "clicks": 400,
+      "mean_energy": 0.03787384991678033,
+      "energy_spread_db": 7.590787861085554,
+      "maximum_peak": 0.021373800933361053
+    },
+    "4": {
+      "clicks": 400,
+      "mean_energy": 0.037862351874249356,
+      "energy_spread_db": 6.939040550476346,
+      "maximum_peak": 0.021373800933361053
+    }
+  },
+  "by_minute": {
+    "1": {
+      "1": {
+        "clicks": 39,
+        "mean_energy": 0.044532715374943424,
+        "energy_spread_db": 5.766130299934014,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.04426879072551031,
+        "energy_spread_db": 5.766130299934014,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.04455467647733683,
+        "energy_spread_db": 5.766130299934014,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.04451576442844782,
+        "energy_spread_db": 5.766130299934014,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "2": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "3": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "4": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "5": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.05435001226723818,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "6": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.053695503396657275,
+        "energy_spread_db": 2.314627970873862,
+        "maximum_peak": 0.021373800933361053
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.052909864869998637,
+        "energy_spread_db": 13.611387774365177,
+        "maximum_peak": 0.021373800933361053
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.05299307592227124,
+        "energy_spread_db": 7.590787861085554,
+        "maximum_peak": 0.021373800933361053
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.05288715502019466,
+        "energy_spread_db": 6.939040550476346,
+        "maximum_peak": 0.021373800933361053
+      }
+    },
+    "7": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.015836403435719994,
+        "energy_spread_db": 1.3100310059630125,
+        "maximum_peak": 0.016284123063087463
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.015879805330087475,
+        "energy_spread_db": 0.8670284410995693,
+        "maximum_peak": 0.016284123063087463
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.01589895205351133,
+        "energy_spread_db": 0.7715781739546108,
+        "maximum_peak": 0.016284123063087463
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.015928804579167167,
+        "energy_spread_db": 0.39993256892213813,
+        "maximum_peak": 0.016284123063087463
+      }
+    },
+    "8": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      }
+    },
+    "9": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      }
+    },
+    "10": {
+      "1": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "2": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "3": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      },
+      "4": {
+        "clicks": 40,
+        "mean_energy": 0.015963915215243735,
+        "energy_spread_db": 0.0,
+        "maximum_peak": 0.016284123063087463
+      }
+    }
+  },
+  "between_beat_mean_spread_db": 0.009640770573116643,
+  "per_beat_minute_mean_spread_db": {
+    "1": 5.355430894814235,
+    "2": 5.343544723214672,
+    "3": 5.3383114680339805,
+    "4": 5.330164622427063
+  },
+  "settings": {
+    "case": "ten_minute_4_4",
+    "bpm": "160",
+    "beats": "4",
+    "unit": "4",
+    "subdivision": "1",
+    "poly": "0",
+    "sound": "0",
+    "volume": "200",
+    "accents": "0",
+    "frames": "28870560",
+    "discontinuities": "0",
+    "position_gaps": "0",
+    "timestamp_errors": "0",
+    "device_position_available": "0",
+    "requested_playback_ms": "601000",
+    "actual_playback_ms": "601000"
+  },
+  "capture_seconds": 601.47,
+  "leading_partial_clicks_excluded": 1,
+  "positive_control_energy_spread_db": 3.663478317016579,
+  "failures": [
+    "ten_minute_4_4: unequal clicks",
+    "Numbered-beat or time-dependent emphasis detected"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "cases": [
+    {
+      "case": "ten_minute_4_4",
+      "clicks": 1601,
+      "rms_spread_db": 13.611388000000005,
+      "peak_spread_db": 10.653132999999997,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    },
+    {
+      "case": "positive_control",
+      "clicks": 14,
+      "rms_spread_db": 3.663477999999998,
+      "peak_spread_db": 2.316089000000005,
+      "nan_count": 0.0,
+      "inf_count": 0.0
+    }
+  ],
+  "failures": [
+    "ten_minute_4_4: uneven RMS/peak"
+  ]
+}

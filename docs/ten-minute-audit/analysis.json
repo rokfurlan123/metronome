@@ -1,0 +1,62 @@
+{
+  "measurement": "digital full-click energy/peak/RMS/FFT, not acoustic loudness",
+  "cases": [
+    {
+      "clicks": 1601,
+      "energy_spread_db": 13.611387774365177,
+      "peak_spread_db": 10.653133021355028,
+      "max_sample_difference": 0.010014735627919436,
+      "minimum_correlation": 0.9923284233828853,
+      "max_relative_spectral_error": 0.8554928666261341,
+      "centroid_spread_hz": 16.766917013030934,
+      "interval_range_frames": [
+        18000,
+        18000
+      ],
+      "case": "ten_minute_4_4",
+      "rate": 48000,
+      "alignment_offset_frames": 11584,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 1,
+      "live_fractional_anchor_onset_corrections": [],
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      },
+      "measured_interval_range_frames": [
+        18000,
+        18000
+      ]
+    },
+    {
+      "clicks": 14,
+      "energy_spread_db": 3.663478317016579,
+      "peak_spread_db": 2.3160891050361867,
+      "max_sample_difference": 0.0367408599704504,
+      "minimum_correlation": -0.086417498267255,
+      "max_relative_spectral_error": 1.6427784140013002,
+      "centroid_spread_hz": 588.756255162576,
+      "interval_range_frames": [
+        18000,
+        18000
+      ],
+      "case": "positive_control",
+      "rate": 48000,
+      "alignment_offset_frames": 10624,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 1,
+      "live_fractional_anchor_onset_corrections": [],
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      }
+    }
+  ],
+  "failures": [
+    "ten_minute_4_4: unequal clicks"
+  ]
+}

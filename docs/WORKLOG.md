@@ -224,3 +224,51 @@ Prepared the first Git commit for Pulse 0.2.8, including native app source, Linu
 - **Limits explicitly retained:** native captures sometimes have a partial leading packet (excluded/reported; cause unresolved), so no native cold-start waveform proof; device-position continuity unavailable in process loopback, not falsely passed; live stable phases settle two seconds and allow recorded ±1-sample fractional-anchor alignment, not arbitrary waveform rescaling or timing concealment. No microphone, speaker/headphone, Bluetooth/DSP or endpoint-effects measurement. Full methods, before/after plots, matrices, native metrics, tool-correction notes and repeat commands: `docs/evenness-audit/README.md`.
 - Warning-clean Linux MinGW build, system-DLL-only imports, full audit runner, nine Linux/Wine startup assertions and native installed-app verifier pass. Added Linux-only analysis venv/version notes and pinned direct dependencies; no Windows toolchain installed. Prepared ignored `dist/Pulse.exe` and `dist/Pulse-0.3.2-windows-x64.zip`.
 - Under standing automatic-update authorization, found no running installed Pulse practice, installed **`C:\Users\rocky\AppData\Local\Programs\Pulse\0.3.2\Pulse.exe`**, and updated/verified existing Desktop and Start menu shortcuts. Installed/build SHA-256 **`e9e89d7ded835987307cf7a4800a5ee13784ff5c6c0ca283e0e73945050bd119`**. Native 288-DPI verification confirmed defaults, meter, lock/unlock, minimize/restore and view cycling; left the app stopped, unlocked, in tiny view. Older version folders retained. No PR/merge/release publication or unrelated Windows modifications.
+
+## 2026-11-08 — Requested ten-minute plain 4/4 playback test
+
+- Rok clarified that a particular beat in each 4/4 bar sounds louder, then asked
+  for a ten-minute test. Worked in separate `codex/ten-minute-four-four-audit`
+  worktree based on the installed 0.3.2 audio-fix source `1ffa332`; preserved all
+  existing worktrees. Native Windows had no installed Pulse process running.
+  Read-only installed binary hash still matches the known 0.3.2 SHA256 above.
+- Extended only test tooling: native harness `--long-only BPM SOUND GAIN`,
+  actual monotonic playback-duration logging, Windows `-TenMinutes` runner with
+  a 12-minute own-process-only timeout, and numbered-beat/per-minute summary.
+  Added six known-signal tests for equal beats, first-beat emphasis, beat-3 gain
+  growth after five minutes, startup numbering, missing coverage and bad grids;
+  included them in the existing audio audit runner. No production source changes.
+- Real-time native capture ran 12:16:17–12:26:26 Europe/Ljubljana. Long playback
+  was **601,000 ms**, captured 28,870,560 stereo frames / **601.47 s** at 48 kHz.
+  Initial 160 BPM, 4/4, Clean tone, gain 200%, accents off, subdivision 1, no
+  second/silent pulse. Asked for user's BPM/sound asynchronously; these settings
+  were assumptions rather than a confirmed exact user setup. Followed with a
+  six-second accented positive control. Captured only this test process, no
+  microphone or other-app media. Test session reduced to 15%; no Windows master
+  volume/effect changes, installed app changes, shortcuts or new toolchain.
+- **Measured failure, not a pass:** 1,601 complete clicks, **13.611387774 dB**
+  energy spread / **10.653133021 dB** peak spread; FFmpeg agrees. All intervals
+  exactly 18,000 frames. Controls intentionally accented positive case correctly
+  detected (3.663478317 dB). One leading partial click and stop boundary excluded;
+  no per-click gain normalization or static onset corrections. Capture flags zero;
+  optional device position unavailable, not a verified device-continuity pass.
+- Variation affects all numbered positions: overall mean-position spread only
+  0.009640771 dB, but every position has ~5.33–5.36 dB minute-mean movement.
+  Early/late stable sections match 200% waveform and intermediate plateau matches
+  400% waveform at one common output scale (~0.022500002), correlation 1,
+  maximum fit residual <1.7e-9. This is evidence resembling pre-limiter gain
+  change, not proof of who/what changed a control. The visible test window was
+  interactive and continuous gain/control/session telemetry was NOT recorded.
+  Asked whether Rok adjusted it; answer unavailable while writing this record.
+  Cannot attribute the cause, claim an untouched-settings pass, or claim the
+  reported fixed bar-position issue is reproduced/fixed from this run.
+- Passed 272,566 core ASan/UBSan checks, 10 existing analyzer tests, 6 new
+  numbered-beat tests, warning-clean Linux MinGW GCC 13-posix harness build,
+  Python compile check, PowerShell parser and git whitespace checks. Real audio
+  analysis commands correctly return nonzero and their failure evidence is kept.
+  Development-aware measurements, no independent-agent/acoustic listening claim.
+- [Detailed failed-run report, graph, compact metrics and repeat commands](ten-minute-audit/README.md).
+  Raw app-only audio/every-click tables remain ignored in `build/native-ten-minute`.
+  No app update/install is needed because only tests/docs changed; no PR, merge,
+  release or runtime audio fix was made. Next controlled investigation should
+  continuously log real gain/accent/session settings and correlate changes.

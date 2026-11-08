@@ -1,0 +1,3 @@
+case,bpm,beats,unit,subdivision,poly,sound,volume,accents,frames,discontinuities,position_gaps,timestamp_errors,device_position_available,requested_playback_ms,actual_playback_ms
+ten_minute_4_4,160,4,4,1,0,0,200,0,28870560,0,0,0,0,601000,601000
+positive_control,160,4,4,1,0,0,200,1,310560,0,0,0,0,6000,6000

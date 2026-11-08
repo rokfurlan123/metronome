@@ -97,16 +97,24 @@ int main(int argc,char** argv) {
         if(SUCCEEDED(properties->GetValue(effectsKey,&property))) {std::cout<<"INFO endpoint Disable_SysFx vt="<<property.vt;if(property.vt==VT_UI4)std::cout<<" value="<<property.ulVal;std::cout<<std::endl;PropVariantClear(&property);}
         EvenCom<IAudioSessionManager2> manager;EvenCom<ISimpleAudioVolume> session;
         checked(device->Activate(__uuidof(IAudioSessionManager2),CLSCTX_ALL,nullptr,manager.address()),"test session manager");checked(manager->GetSimpleAudioVolume(nullptr,0,&session.p),"test session");checked(session->SetMasterVolume(.15f,nullptr),"lower only test-session volume");
-        std::ofstream metrics(folder+"/capture.csv");metrics<<"case,bpm,beats,unit,subdivision,poly,sound,volume,accents,frames,discontinuities,position_gaps,timestamp_errors,device_position_available\n";
+        std::ofstream metrics(folder+"/capture.csv");metrics<<"case,bpm,beats,unit,subdivision,poly,sound,volume,accents,frames,discontinuities,position_gaps,timestamp_errors,device_position_available,requested_playback_ms,actual_playback_ms\n";
         auto run=[&](const std::string& name,int bpm,int beats,int unit,int sub,int poly,int sound,int volume,bool accents,int ms) {
             fieldEven(Bpm,bpm);fieldEven(Volume,volume);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
             fieldEven(Beats,beats);fieldEven(Groups,beats);choiceEven(Unit,unit==2?0:unit==4?1:unit==8?2:3);choiceEven(Subdivision,sub-1);fieldEven(Poly,poly);fieldEven(Mute,0);choiceEven(Sound,sound);accentsEven(accents);
-            ProcessCapture capture(folder+"/"+name);capture.collect(200);clickEven(Start);capture.collect(ms);clickEven(Start);capture.collect(300);
-            metrics<<name<<','<<bpm<<','<<beats<<','<<unit<<','<<sub<<','<<poly<<','<<sound<<','<<volume<<','<<accents<<','<<capture.frames<<','<<capture.discontinuities<<','<<capture.gaps<<','<<capture.timestampErrors<<','<<capture.hasDevicePosition()<<'\n';metrics.flush();
-            std::cout<<"CAPTURE "<<name<<" frames="<<capture.frames<<" discontinuities="<<capture.discontinuities<<" gaps="<<capture.gaps<<" timestamp_errors="<<capture.timestampErrors<<std::endl;
+            ProcessCapture capture(folder+"/"+name);capture.collect(200);clickEven(Start);auto started=GetTickCount64();
+            std::cout<<"START "<<name<<" bpm="<<bpm<<" meter="<<beats<<'/'<<unit<<" sound="<<sound<<" gain="<<volume<<" accents="<<accents<<" playback_ms="<<ms<<std::endl;
+            capture.collect(ms);auto elapsed=GetTickCount64()-started;clickEven(Start);capture.collect(300);
+            metrics<<name<<','<<bpm<<','<<beats<<','<<unit<<','<<sub<<','<<poly<<','<<sound<<','<<volume<<','<<accents<<','<<capture.frames<<','<<capture.discontinuities<<','<<capture.gaps<<','<<capture.timestampErrors<<','<<capture.hasDevicePosition()<<','<<ms<<','<<elapsed<<'\n';metrics.flush();
+            std::cout<<"CAPTURE "<<name<<" frames="<<capture.frames<<" elapsed_ms="<<elapsed<<" discontinuities="<<capture.discontinuities<<" gaps="<<capture.gaps<<" timestamp_errors="<<capture.timestampErrors<<std::endl;
             if(capture.discontinuities||capture.gaps||capture.timestampErrors)result=3;
         };
-        if(argc>2&&std::string(argv[2])=="--live-only") {
+        if(argc>2&&std::string(argv[2])=="--long-only") {
+            int bpm=argc>3?std::stoi(argv[3]):160,sound=argc>4?std::stoi(argv[4]):0,gain=argc>5?std::stoi(argv[5]):200;
+            if(bpm<20||bpm>300||sound<0||sound>3||gain<1||gain>400)throw std::runtime_error("Invalid long-test settings");
+            // Ten full real-time minutes plus one second for capture boundaries.
+            run("ten_minute_4_4",bpm,4,4,1,0,sound,gain,false,601000);
+            run("positive_control",bpm,4,4,1,0,sound,gain,true,6000);
+        } else if(argc>2&&std::string(argv[2])=="--live-only") {
             fieldEven(Bpm,137);fieldEven(Beats,7);fieldEven(Groups,7);choiceEven(Unit,3);choiceEven(Subdivision,3);fieldEven(Poly,5);fieldEven(Mute,0);choiceEven(Sound,3);fieldEven(Volume,200);accentsEven(false);
             ProcessCapture capture(folder+"/live");capture.collect(200);clickEven(Start);
             std::ofstream segments(folder+"/segments.csv");segments<<"case,start_frame,end_frame,bpm,beats,unit,subdivision,poly,sound,volume,accents\n";

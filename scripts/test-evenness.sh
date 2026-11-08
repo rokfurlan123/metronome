@@ -8,6 +8,7 @@ mkdir -p build "$output"
 "$python" -c 'import numpy, scipy, matplotlib'
 g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror tests/evenness_audit.cpp -o build/evenness_audit
 "$python" tests/test_evenness_analyzer.py
+"$python" tests/test_four_four_summary.py
 build/evenness_audit "$output"
 "$python" scripts/analyze-evenness.py "$output" --expect-flat
 "$python" scripts/verify-evenness-ffmpeg.py "$output" --expect-flat

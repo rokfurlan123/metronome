@@ -70,3 +70,10 @@ Closing Pulse exits immediately without an unsaved-changes prompt. Use Save befo
 ## Intensive audio evenness checks (0.3.2)
 
 `bash scripts/test-evenness.sh` runs the full-click matrix, measurement-tool self-tests, FFT/spectrogram analysis and a separate FFmpeg RMS/peak cross-check. See [audio audit methods, evidence and limits](docs/evenness-audit/README.md). Native Windows tests capture only the audit process, never the microphone or other applications; run the explicitly requested Windows capture separately with `scripts/test-evenness-windows.ps1`. These are development-aware digital measurements, not an acoustic listening guarantee.
+
+For a real-time ten-minute plain 4/4 test, the Windows runner accepts
+`-TenMinutes -Bpm 160 -Sound 0 -Gain 200`; analyze numbered beats/minutes with
+`scripts/summarize-four-four.py`. The [2026-11-08 long-run result](docs/ten-minute-audit/README.md)
+**failed** overall level uniformity: all beat positions changed level over time,
+without establishing one persistent louder bar position. Live controls were not
+continuously monitored, so the cause remains unresolved; no new audio fix is claimed.
