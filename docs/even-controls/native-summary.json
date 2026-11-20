@@ -1,0 +1,93 @@
+{
+  "capture": {
+    "case": "ten_minute_4_4",
+    "bpm": "160",
+    "beats": "4",
+    "unit": "4",
+    "subdivision": "1",
+    "poly": "0",
+    "sound": "0",
+    "volume": "200",
+    "accents": "0",
+    "frames": "28872960",
+    "discontinuities": "0",
+    "position_gaps": "0",
+    "timestamp_errors": "0",
+    "device_position_available": "0",
+    "requested_playback_ms": "601000",
+    "actual_playback_ms": "601047"
+  },
+  "complete_clicks": {
+    "clicks": 1601,
+    "energy_spread_db": 0.0,
+    "peak_spread_db": 0.0,
+    "max_sample_difference": 0.0,
+    "minimum_correlation": 0.9999999999999998,
+    "max_relative_spectral_error": 0.0,
+    "centroid_spread_hz": 0.0,
+    "interval_range_frames": [
+      18000,
+      18000
+    ],
+    "case": "ten_minute_4_4",
+    "rate": 48000,
+    "alignment_offset_frames": 10624,
+    "stereo_max_difference": 0.0,
+    "leading_capture_partial_clicks_excluded": 1,
+    "capture_counters": {
+      "discontinuities": 0,
+      "timestamp_errors": 0,
+      "position_gaps": null,
+      "device_position_available": false
+    },
+    "measured_interval_range_frames": [
+      18000,
+      18000
+    ]
+  },
+  "analysis_failures": [],
+  "ffmpeg": {
+    "cases": [
+      {
+        "case": "ten_minute_4_4",
+        "clicks": 1601,
+        "rms_spread_db": 0.0,
+        "peak_spread_db": 0.0,
+        "nan_count": 0.0,
+        "inf_count": 0.0
+      }
+    ],
+    "failures": []
+  },
+  "telemetry_samples": 2404,
+  "sampled_ranges": {
+    "elapsed_ms": [
+      0.0,
+      600797.0
+    ],
+    "control_pct": [
+      200.0,
+      200.0
+    ],
+    "requested_pct": [
+      200.0,
+      200.0
+    ],
+    "session_scalar": [
+      0.15,
+      0.15
+    ],
+    "session_muted": [
+      0.0,
+      0.0
+    ],
+    "endpoint_scalar": [
+      1.0,
+      1.0
+    ],
+    "endpoint_muted": [
+      0.0,
+      0.0
+    ]
+  }
+}

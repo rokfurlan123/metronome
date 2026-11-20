@@ -58,16 +58,13 @@ int main() {
         SetForegroundWindow(window); Sleep(200);
         SendMessageW(control(Volume),WM_SETTEXT,0,reinterpret_cast<LPARAM>(L"0"));
         clickAt(control(Start)); Sleep(2300); tickCheck(.5,"120 BPM baseline");
-        typeTempo(L"240",false); Sleep(2000); tickCheck(.25,"Typing 240 BPM while playing");
+        typeTempo(L"240"); Sleep(2000); tickCheck(.25,"Typing 240 BPM while playing");
         typeTempo(L"60"); Sleep(4500); tickCheck(1.,"Typing 60 BPM while playing");
         clickAt(control(Plus)); Sleep(4400); tickCheck(60./61,"Plus button while playing");
         typeTempo(L"120"); Sleep(400);
         holdTempo(Plus); holdTempo(Minus,true);
         clickAt(control(ToolsTab));
-        if(!IsWindowEnabled(control(Accents))) throw std::runtime_error("Accents disabled during playback");
-        clickAt(control(Accents));
-        if(SendMessageW(control(Accents),BM_GETCHECK,0,0)!=BST_UNCHECKED) throw std::runtime_error("Accent checkbox failed");
-        clickAt(control(Accents));
+        if(control(129)) throw std::runtime_error("Accent control should not exist");
         typeTempo(L"299"); Sleep(400); clickAt(control(Plus)); clickAt(control(Plus));
         if(tempoValue()!=300) throw std::runtime_error("Upper tempo limit failed");
         typeTempo(L"20"); Sleep(400); clickAt(control(Minus));

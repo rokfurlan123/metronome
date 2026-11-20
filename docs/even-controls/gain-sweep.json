@@ -1,0 +1,30 @@
+{
+  "gain100": {
+    "clicks": 17,
+    "energy": 0.003990978803810934,
+    "spread_db": 0.0,
+    "spectrum_error": 0.0,
+    "gain_db_vs_100": 0.0
+  },
+  "gain200": {
+    "clicks": 17,
+    "energy": 0.015963915215243735,
+    "spread_db": 0.0,
+    "spectrum_error": 0.0,
+    "gain_db_vs_100": 6.020599913279624
+  },
+  "gain400": {
+    "clicks": 17,
+    "energy": 0.05435001226723818,
+    "spread_db": 0.0,
+    "spectrum_error": 0.0,
+    "gain_db_vs_100": 11.341202252049047
+  },
+  "return200": {
+    "clicks": 17,
+    "energy": 0.015963915215243735,
+    "spread_db": 0.0,
+    "spectrum_error": 0.0,
+    "gain_db_vs_100": 6.020599913279624
+  }
+}

@@ -25,7 +25,7 @@ function Require($condition,$message) { if (-not $condition) { throw $message };
 function Label($handle) { $b=New-Object System.Text.StringBuilder 100; [void][TinyVerify]::ReadText($handle,13,[IntPtr]100,$b); $b.ToString() }
 $link=Join-Path ([Environment]::GetFolderPath('Programs')) 'Pulse Metronome.lnk'
 $target=(New-Object -ComObject WScript.Shell).CreateShortcut($link).TargetPath
-Require ($target -like '*\Pulse\0.3.2\Pulse.exe') 'shortcut targets Pulse 0.3.2'
+Require ($target -like '*\Pulse\0.4.0\Pulse.exe') 'shortcut targets Pulse 0.4.0'
 $existing=@(Get-Process Pulse -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $target -and $_.MainWindowHandle -ne 0})
 if (-not $existing) { Start-Process -FilePath $link }
 for($i=0;$i -lt 40;$i++) {
@@ -39,13 +39,13 @@ if ($existing -and -not $ResumeVerification) { Write-Output 'SKIP state changes 
 Start-Sleep -Milliseconds 300
 Require ((Label ([TinyVerify]::GetDlgItem($h,110))) -eq '200') 'fresh startup metronome volume is 200 percent'
 Require (([TinyVerify]::SendMessage([TinyVerify]::GetDlgItem($h,131),1024,[IntPtr]::Zero,[IntPtr]::Zero)).ToInt32() -eq 200) 'fresh startup volume slider is 200 percent'
-Require (([TinyVerify]::SendMessage([TinyVerify]::GetDlgItem($h,129),240,[IntPtr]::Zero,[IntPtr]::Zero)).ToInt32() -eq 0) 'fresh startup accents are off'
+Require (([TinyVerify]::GetDlgItem($h,129)) -eq [IntPtr]::Zero) 'accent control is absent'
 Require ([TinyVerify]::IsWindowVisible([TinyVerify]::GetDlgItem($h,139))) 'tiny meter dropdown visible at launch'
 $r=New-Object TinyVerify+Rect
 [void][TinyVerify]::GetClientRect($h,[ref]$r)
 $dpi=[TinyVerify]::GetDpiForWindow($h)
 Write-Output ("INFO client="+$r.Right+"x"+$r.Bottom+" dpi="+$dpi)
-Require (($r.Right -eq [int][Math]::Floor(410*$dpi/96+0.5)) -and ($r.Bottom -eq [int][Math]::Floor(44*$dpi/96+0.5))) 'tiny bar dimensions match Windows DPI'
+Require (($r.Right -eq [int][Math]::Floor(410*$dpi/96+0.5)) -and ($r.Bottom -eq [int][Math]::Floor(54*$dpi/96+0.5))) 'tiny bar dimensions match Windows DPI'
 for($i=0;$i -lt 40 -and (([TinyVerify]::GetWindowLongPtr($h,-20).ToInt64() -band 8) -eq 0);$i++) { Start-Sleep -Milliseconds 100 }
 if (([TinyVerify]::GetWindowLongPtr($h,-20).ToInt64() -band 8) -eq 0) { Write-Warning 'Cold-launch topmost style is missing; cycling Size below restores it. Startup issue remains open.' }
 $lock=[TinyVerify]::GetDlgItem($h,135)

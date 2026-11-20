@@ -10,36 +10,37 @@ int main() {
     try {
         pulse::Settings s;
         require(s.volume==200,"Fresh startup defaults to 200 percent metronome gain");
-        require(!s.accents,"Fresh startup defaults to no accents");
         require(pulse::flatClickFrames(s)==24000,"Sparse startup keeps the natural click tail");
         {
-            auto grid=s;grid.bpm=300;grid.subdivision=4;grid.poly=15;grid.simple={7,16,1,0,{2,2,3}};
+            auto grid=s;grid.bpm=300;grid.subdivision=4;grid.poly=15;grid.simple={7,16,1,0};
             require(pulse::flatClickFrames(grid)==40,"Dense irregular grid has a fixed 40-frame envelope cap");
             auto muted=grid;muted.mute=100;
             require(pulse::flatClickFrames(muted)==40,"Silent beats cannot lengthen or emphasize remaining clicks");
-            grid.sequence=true;grid.bars={{4,4,1,120,{4}},{7,16,1,300,{2,2,3}},{3,8,1,0,{3}}};
+            grid.sequence=true;grid.bars={{4,4,1,120},{7,16,1,300},{3,8,1,0}};
             require(pulse::flatClickFrames(grid)<=40,"Mixed-meter steps share one conservative envelope");
         }
         {
             std::stringstream preset; pulse::save(preset,s); auto restored=pulse::load(preset);
-            require(restored.volume==200&&!restored.accents,"Startup defaults survive preset round trip");
-            auto custom=s; custom.volume=70; custom.accents=true;
+            require(restored.volume==200,"Startup defaults survive preset round trip");
+            auto custom=s; custom.volume=70;
             std::stringstream explicitPreset; pulse::save(explicitPreset,custom); restored=pulse::load(explicitPreset);
-            require(restored.volume==70&&restored.accents,"Explicit saved settings override startup defaults");
+            require(restored.volume==70,"Explicit saved settings override startup defaults");
         }
         for(int sound=0;sound<4;++sound) {
             pulse::Settings flat; flat.sound=sound;
             std::stringstream preset; pulse::save(preset,flat);
-            require(!pulse::load(preset).accents,"Accent preference survives save/load");
-            for(auto event:std::vector<pulse::Event>{{0,0,2,false,false,0,0},{0,0,0,false,false,0,0},{0,0,1,true,false,0,0}}) {
+            require(preset.str().starts_with("PULSE 6\n"),"New format does not need an accent setting");
+            for(auto event:std::vector<pulse::Event>{{0,0,true,false,false,0,0},{0,0,0,false,false,0,0},{0,0,false,true,false,0,0}}) {
                 pulse::Synth reference, actual;
                 reference.trigger({0,0,1,false,false,0,0},flat); actual.trigger(event,flat);
                 for(int sample=0;sample<5200;++sample) require(reference.sample()==actual.sample(),"No accents produces identical waveform for every click type and sound");
             }
         }
-        for(int version:{1,2}) {
-            std::stringstream old("PULSE "+std::to_string(version)+"\n120 1 0 0 70 0 0\n4 4 1 0 4\n1\n4 4 2 0 4\n");
-            require(pulse::load(old).accents,"Legacy presets retain accents");
+        for(int version:{1,2,3,4,5}) {
+            std::stringstream old("PULSE "+std::to_string(version)+"\n120 1 0 0 70 0 0"+std::string(version>=3?" 1":"")+"\n4 4 1 0 2+2\n1\n4 4 2 0 4\n");
+            auto legacy=pulse::load(old); auto beats=pulse::Timeline(legacy).nextBar();
+            pulse::Synth a,b; a.trigger(beats[0],legacy); b.trigger(beats[1],legacy);
+            for(int i=0;i<5000;++i) require(a.sample()==b.sample(),"Old grouped presets play equal beats");
         }
         { std::stringstream bad("PULSE 3\n120 1 0 0 70 0 0 2\n"); rejects([&]{pulse::load(bad);}); }
 
@@ -48,16 +49,16 @@ int main() {
         require(bar.size()==4,"4/4 click count");
         for(int i=0;i<4;++i) require(bar[i].frame==24000*i,"120 BPM quarter-note timing");
         require(standard.nextBar()[0].frame==96000,"4/4 loop boundary");
-        s.sequence=true; s.bars={{4,4,1,0,{4}},{7,8,1,0,{2,2,3}},{3,4,1,60,{3}}};
+        s.sequence=true; s.bars={{4,4,1,0},{7,8,1,0},{3,4,1,60}};
         pulse::Timeline mixed(s); mixed.nextBar(); bar=mixed.nextBar();
         require(bar.size()==7&&bar[0].frame==96000&&bar[6].frame==168000,"7/8 boundary and eighth-note duration");
-        for(int i=0;i<7;++i) require(bar[i].accent==((i==0||i==2||i==4)?2:1),"2+2+3 accents");
+        for(int i=0;i<7;++i) require(bar[i].mainBeat==1,"No emphasis at group boundaries");
         bar=mixed.nextBar(); require(bar[0].frame==180000&&bar[1].frame==228000,"Step tempo changes");
         require(mixed.nextBar()[0].frame==324000,"Sequence loops without gaps");
-        s.bars={{3,4,2,0,{3}},{5,8,3,0,{2,3}}}; pulse::Timeline repeated(s);
+        s.bars={{3,4,2,0},{5,8,3,0}}; pulse::Timeline repeated(s);
         const int steps[]{0,0,1,1,1,0}; const int repeats[]{0,1,0,1,2,0};
         for(int i=0;i<6;++i) { auto e=repeated.nextBar()[0]; require(e.step==steps[i]&&e.repeat==repeats[i],"Repeat ordering"); }
-        s.sequence=true; s.bars={{7,8,0,0,{2,2,3}},{3,4,2,0,{3}},{4,4,1,0,{4}}};
+        s.sequence=true; s.bars={{7,8,0,0},{3,4,2,0},{4,4,1,0}};
         pulse::Timeline forever(s);
         for(int i=0;i<12000;++i) {
             auto e=forever.nextBar()[0];
@@ -87,7 +88,7 @@ int main() {
         {
             pulse::Settings layers; layers.subdivision=3; layers.poly=3; layers.mute=100;
             pulse::Timeline live(layers); auto events=live.nextBar(); auto before=events;
-            size_t boundary=0; while(events[boundary].poly || events[boundary].beatPosition!=1 || events[boundary].accent==0) ++boundary;
+            size_t boundary=0; while(events[boundary].poly || events[boundary].beatPosition!=1 || events[boundary].mainBeat==0) ++boundary;
             live.changeTempo(60,events,boundary);
             for(size_t i=0;i<events.size();++i) {
                 require(events[i].frame==(i<boundary?before[i].frame:std::llround(24000+(events[i].beatPosition-1)*48000)),"Live tempo scales subdivisions and overlay with the main pulse");
@@ -95,7 +96,7 @@ int main() {
             }
         }
         {
-            pulse::Settings programmed; programmed.sequence=true; programmed.bars={{3,4,1,90,{3}},{7,8,0,0,{2,2,3}}};
+            pulse::Settings programmed; programmed.sequence=true; programmed.bars={{3,4,1,90},{7,8,0,0}};
             pulse::Timeline live(programmed); auto events=live.nextBar(); live.changeTempo(60,events,1);
             require(events[2].frame==64000,"Explicit step BPM is preserved");
             events=live.nextBar(); require(events[0].frame==96000 && events[1].frame==120000 && events[0].step==1,"Next mixed-meter step inherits live main BPM");
@@ -115,7 +116,7 @@ int main() {
         std::vector<int64_t> polyFrames; for(auto e:bar) if(e.poly) polyFrames.push_back(e.frame);
         require(polyFrames==std::vector<int64_t>({0,32000,64000}),"3 against 4 timing");
         s.poly=0; s.mute=100; pulse::Timeline silent(s); for(auto e:silent.nextBar()) require(e.silent,"Silent subdivisions must follow muted beat");
-        s.mute=0; s.bpm=137; s.simple={7,8,1,0,{2,2,3}}; s.subdivision=1;
+        s.mute=0; s.bpm=137; s.simple={7,8,1,0}; s.subdivision=1;
         pulse::Timeline precise(s); const long double duration=48000.L*60*4*7/(137*8);
         for(int i=0;i<10000;++i) { auto e=precise.nextBar()[0]; require(std::abs(e.frame-i*duration)<=.5001L,"Long-running timing drift"); }
         require(pulse::parseGroups(" 2 + 2 + 3 ",7)==std::vector<int>({2,2,3}),"Whitespace in groups");
@@ -128,7 +129,7 @@ int main() {
         require(energy>1,"Click is inaudible"); e.silent=true; synth.trigger(e,s); require(synth.sample()==0,"Muted click emitted audio");
         for(int sound=0;sound<4;++sound) {
             pulse::Settings normal, boosted; normal.sound=sound; normal.volume=100; boosted=normal; boosted.volume=200;
-            pulse::Synth a,b; pulse::Event click{0,0,2,false,false,0,0}; a.trigger(click,normal); b.trigger(click,boosted);
+            pulse::Synth a,b; pulse::Event click{0,0,true,false,false,0,0}; a.trigger(click,normal); b.trigger(click,boosted);
             double normalEnergy=0,boostEnergy=0;
             for(int i=0;i<2600;++i) { double x=a.sample(), y=b.sample(); normalEnergy+=x*x; boostEnergy+=y*y; require(std::isfinite(y)&&std::abs(y)<=.950001,"Boosted sound remains bounded"); }
             require(boostEnergy>normalEnergy*1.5,"200 percent audibly increases energy for every sound");
@@ -143,7 +144,7 @@ int main() {
         for(int version:{3,4}) {
             std::stringstream old("PULSE "+std::to_string(version)+"\n120 1 0 0 100 2 0 0\n4 4 1 0 4\n1\n4 4 2 0 4\n");
             auto loaded=pulse::load(old);
-            require(loaded.volume==100 && loaded.sound==2 && !loaded.accents,"Previous boost/accents presets remain compatible");
+            require(loaded.volume==100 && loaded.sound==2,"Previous boost/accents presets remain compatible");
         }
         double cleanEnergy=0, fullEnergy=0;
         for(int sound=0;sound<4;++sound) {
@@ -171,24 +172,24 @@ int main() {
         { pulse::Settings bad; bad.sound=4; rejects([&]{pulse::validate(bad);}); }
         // Regression: flat clicks must not add energy at coincident onsets.
         for(int sound=0;sound<4;++sound) for(int volume:{70,200,400}) {
-            pulse::Settings flat; flat.accents=false; flat.sound=sound; flat.volume=volume;
-            pulse::Event main{0,0,2,false,false,0,0}, overlay{0,0,1,true,false,0,0};
+            pulse::Settings flat; flat.sound=sound; flat.volume=volume;
+            pulse::Event main{0,0,true,false,false,0,0}, overlay{0,0,false,true,false,0,0};
             pulse::Synth one,two;
             one.trigger(main,flat,6000); two.trigger(main,flat,6000); two.trigger(overlay,flat,6000);
             for(int i=0;i<6000;++i) require(one.sample()==two.sample(),"Coincident flat clicks must equal one click");
             pulse::Synth tailed,fresh;
-            auto accented=flat; accented.accents=true; tailed.trigger(main,accented);
+            tailed.trigger(main,flat);
             for(int i=0;i<500;++i) tailed.sample();
             tailed.trigger(overlay,flat,901); fresh.trigger(main,flat,901);
             float last=1;
-            for(int i=0;i<901;++i) { last=tailed.sample(); require(last==fresh.sample(),"Disabling accents clears previous voiced tails"); }
+            for(int i=0;i<901;++i) { last=tailed.sample(); require(last==fresh.sample(),"Restarting the voice clears previous tails"); }
             require(last==0 && tailed.sample()==0,"Shortened flat click fades to zero before next onset");
         }
         {
-            std::vector<pulse::Event> clicks{{0,0,2,false,false,0,0},{0,0,1,true,false,0,0},{100,0,0,false,true,0,0},{200,1,1,false,false,0,0}};
+            std::vector<pulse::Event> clicks{{0,0,true,false,false,0,0},{0,0,false,true,false,0,0},{100,0,0,false,true,0,0},{200,1,1,false,false,0,0}};
             require(pulse::framesUntilNextClick(clicks,0,400)==200,"Lookahead skips coincident and silent clicks");
             require(pulse::framesUntilNextClick(clicks,3,400)==200,"Lookahead covers the next bar boundary");
         }
-        std::cout << "Passed " << checks << " checks: mixed meters, repeats, accents, tempo, polyrhythm, silence, 10,000-bar drift, preset validation, and audio synthesis.\n";
+        std::cout << "Passed " << checks << " checks: mixed meters, repeats, equal clicks, tempo, polyrhythm, silence, 10,000-bar drift, preset validation, and audio synthesis.\n";
     } catch(const std::exception& e) { std::cerr<<e.what()<<'\n'; return 1; }
 }

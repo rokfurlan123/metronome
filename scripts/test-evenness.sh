@@ -13,4 +13,5 @@ build/evenness_audit "$output"
 "$python" scripts/analyze-evenness.py "$output" --expect-flat
 "$python" scripts/verify-evenness-ffmpeg.py "$output" --expect-flat
 # Compile the native test in Linux, but run it only via the explicit Windows runner.
-"${PULSE_MINGW_ROOT:-/home/rokdbest/tools/mingw/usr}/bin/x86_64-w64-mingw32-g++-posix" -std=c++20 -O2 -static -Wall -Wextra -Werror -D_WIN32_WINNT=0x0A00 tests/windows_evenness_audit.cpp -o build/windows_evenness_audit.exe -lgdi32 -lole32 -luuid -lavrt -lcomctl32 -lcomdlg32 -ldwmapi -luxtheme -lmmdevapi
+"${PULSE_MINGW_ROOT:-/home/rokdbest/tools/mingw/usr}/bin/x86_64-w64-mingw32-g++-posix" -std=c++20 -O2 -static -Wall -Wextra -Werror -D_WIN32_WINNT=0x0A00 tests/windows_evenness_audit.cpp -o build/windows_evenness_audit.next.exe -lgdi32 -lole32 -luuid -lavrt -lcomctl32 -lcomdlg32 -ldwmapi -luxtheme -lmmdevapi
+mv -f build/windows_evenness_audit.next.exe build/windows_evenness_audit.exe

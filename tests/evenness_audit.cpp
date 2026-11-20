@@ -53,14 +53,14 @@ Result audit(const pulse::Settings& s,int rate,int bars) {
     if(maxEnergy>0) {result.energyDb=10*std::log10(maxEnergy/minEnergy);result.peakDb=20*std::log10(maxPeak/minPeak);}
     return result;
 }
-void artifact(const std::filesystem::path& base,pulse::Settings s,int rate=48000,int bars=8) {
+void artifact(const std::filesystem::path& base,pulse::Settings s,int rate=48000,int bars=8,bool unevenFixture=false) {
     auto events=schedule(s,rate,bars); int64_t end=events.back().e.frame+rate/4;
     std::vector<float> data(static_cast<size_t>(end));pulse::Synth synth(rate);size_t next=0;
-    std::ofstream markers(base.string()+".clicks.csv");markers<<"frame,silent,poly,accent\n";
-    for(const auto& c:events) markers<<c.e.frame<<','<<c.e.silent<<','<<c.e.poly<<','<<c.e.accent<<'\n';
+    std::ofstream markers(base.string()+".clicks.csv");markers<<"frame,silent,poly,main_beat\n";
+    for(const auto& c:events) markers<<c.e.frame<<','<<c.e.silent<<','<<c.e.poly<<','<<c.e.mainBeat<<'\n';
     for(int64_t f=0;f<end;++f) {
         while(next<events.size()&&events[next].e.frame<=f) {synth.trigger(events[next].e,s,events[next].until);++next;}
-        data[static_cast<size_t>(f)]=synth.sample();
+        data[static_cast<size_t>(f)]=synth.sample()*(unevenFixture && next%4==1 ? .5f : 1.f);
     }
     std::ofstream out(base.string()+".f32",std::ios::binary);out.write(reinterpret_cast<const char*>(data.data()),static_cast<std::streamsize>(data.size()*sizeof(float)));
     std::ofstream meta(base.string()+".format.txt");meta<<rate<<" 1\n";
@@ -68,8 +68,8 @@ void artifact(const std::filesystem::path& base,pulse::Settings s,int rate=48000
 int main(int argc,char** argv) {
  try {
     if(argc==12&&std::string(argv[1])=="--render") {
-        pulse::Settings s;s.bpm=std::stoi(argv[3]);s.simple={std::stoi(argv[4]),std::stoi(argv[5]),1,0,{std::stoi(argv[4])}};
-        s.subdivision=std::stoi(argv[6]);s.poly=std::stoi(argv[7]);s.sound=std::stoi(argv[8]);s.volume=std::stoi(argv[9]);s.accents=std::stoi(argv[10])!=0;pulse::validate(s);
+        pulse::Settings s;s.bpm=std::stoi(argv[3]);s.simple={std::stoi(argv[4]),std::stoi(argv[5]),1,0};
+        s.subdivision=std::stoi(argv[6]);s.poly=std::stoi(argv[7]);s.sound=std::stoi(argv[8]);s.volume=std::stoi(argv[9]);if(std::stoi(argv[10])!=0) throw std::runtime_error("Use historical renderer for accented references");pulse::validate(s);
         double seconds=std::stod(argv[11]);int bars=2+static_cast<int>(std::ceil(seconds/(60.*4*s.simple.beats/(s.bpm*s.simple.unit))));
         artifact(argv[2],s,48000,bars);return 0;
     }
@@ -80,30 +80,28 @@ int main(int argc,char** argv) {
     auto run=[&](const char* kind,pulse::Settings s,int rate,int bars=3) {
         auto r=audit(s,rate,bars);++cases;clicks+=r.clicks;samples+=r.samples;
         csv<<kind<<','<<rate<<','<<s.bpm<<','<<s.simple.beats<<','<<s.simple.unit<<','<<s.subdivision<<','<<s.poly<<','<<s.mute<<','<<s.sound<<','<<s.volume<<','<<s.sequence<<','<<r.clicks<<','<<r.samples<<','<<std::setprecision(12)<<r.energyDb<<','<<r.peakDb<<','<<r.difference<<','<<r.correlation<<'\n';
-        if(!s.accents) {worst=std::max(worst,r.energyDb);if(r.difference!=0||r.energyDb>1e-10||r.peakDb>1e-10)++failures;}
-        else if(s.poly==0&&s.mute==0&&r.energyDb<.5) throw std::runtime_error("Positive accent control was not detected");
+        {worst=std::max(worst,r.energyDb);if(r.difference!=0||r.energyDb>1e-10||r.peakDb>1e-10)++failures;}
         if(cases%500==0) std::cout<<"Audited "<<cases<<" cases, failing flat cases "<<failures<<std::endl;
     };
     // Cartesian dense/irregular grid: every second-pulse count, all sounds/gains/subdivisions.
     for(int sound=0;sound<4;++sound) for(int gain:{100,200,400}) for(int sub=1;sub<=4;++sub) for(int poly=0;poly<=16;++poly) for(int bpm:{137,199,300}) {
-        pulse::Settings s;s.sound=sound;s.volume=gain;s.subdivision=sub;s.poly=poly;s.bpm=bpm;s.simple={7,16,1,0,{2,2,3}};run("dense_grid",s,48000);
+        pulse::Settings s;s.sound=sound;s.volume=gain;s.subdivision=sub;s.poly=poly;s.bpm=bpm;s.simple={7,16,1,0};run("dense_grid",s,48000);
     }
     // Deterministic fuzz: meter/rate/mute/gain extremes, mixed steps and loop boundaries.
     std::mt19937 random(0x50554c53); const int rates[]{44100,48000,96000};const int units[]{2,4,8,16};
     for(int n=0;n<1200;++n) {
         pulse::Settings s;s.bpm=20+random()%281;s.sound=random()%4;s.volume=random()%401;s.subdivision=1+random()%4;s.poly=random()%17;s.mute=(n%4==0)?random()%101:0;
-        s.simple={1+int(random()%32),units[random()%4],1,0,{}};s.simple.groups={s.simple.beats};
-        if(n%3==0) {s.sequence=true;s.bars.clear();for(int k=0;k<4;++k) {int beats=1+random()%13;s.bars.push_back({beats,units[random()%4],1,k%2?0:20+int(random()%281),{beats}});}}
+        s.simple={1+int(random()%32),units[random()%4],1,0};
+        if(n%3==0) {s.sequence=true;s.bars.clear();for(int k=0;k<4;++k) {int beats=1+random()%13;s.bars.push_back({beats,units[random()%4],1,k%2?0:20+int(random()%281)});}}
         run("seeded_fuzz",s,rates[n%3],s.sequence?8:3);
     }
     for(int sound=0;sound<4;++sound) for(int rate:rates) for(int gain:{0,1,70,100,200,275,400}) {
         pulse::Settings s;s.sound=sound;s.volume=gain;s.bpm=160;run("plain_160",s,rate,12);
         s.bpm=120;run("startup_120",s,rate,12);
-        if(gain) {s.accents=true;run("positive_control",s,rate,4);}
     }
-    for(int poly:{0,3,5,16}) {pulse::Settings s;s.sound=3;s.volume=200;s.bpm=199;s.subdivision=4;s.poly=poly;s.simple={7,16,1,0,{2,2,3}};artifact(folder/("dense_poly"+std::to_string(poly)),s);}
+    for(int poly:{0,3,5,16}) {pulse::Settings s;s.sound=3;s.volume=200;s.bpm=199;s.subdivision=4;s.poly=poly;s.simple={7,16,1,0};artifact(folder/("dense_poly"+std::to_string(poly)),s);}
     for(int bpm:{120,160}) {pulse::Settings s;s.bpm=bpm;artifact(folder/("plain_"+std::to_string(bpm)),s);}
-    pulse::Settings control;control.accents=true;artifact(folder/"positive_control",control);
+    artifact(folder/"synthetic_positive_control",pulse::Settings{},48000,8,true);
     std::ofstream summary(folder/"summary.txt");summary<<"cases="<<cases<<"\nclicks="<<clicks<<"\nsamples="<<samples<<"\nfailing_flat_cases="<<failures<<"\nworst_energy_spread_db="<<std::setprecision(12)<<worst<<'\n';
     std::cout<<"RESULT cases="<<cases<<" clicks="<<clicks<<" samples="<<samples<<" flat_failures="<<failures<<" worst_energy_db="<<worst<<std::endl;
     return failures&&!reportOnly?1:0;

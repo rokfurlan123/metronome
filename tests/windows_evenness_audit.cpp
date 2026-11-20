@@ -79,17 +79,16 @@ public:
 void fieldEven(int id,int number){auto text=std::to_wstring(number);SendMessageW(control(id),WM_SETTEXT,0,reinterpret_cast<LPARAM>(text.c_str()));}
 void clickEven(int id){SendMessageW(control(id),BM_CLICK,0,0);}
 void choiceEven(int id,int choice){SendMessageW(control(id),CB_SETCURSEL,choice,0);SendMessageW(window,WM_COMMAND,MAKEWPARAM(id,CBN_SELCHANGE),reinterpret_cast<LPARAM>(control(id)));}
-void accentsEven(bool wanted){bool current=SendMessageW(control(Accents),BM_GETCHECK,0,0)==BST_CHECKED;if(current!=wanted)clickEven(Accents);}
 int main(int argc,char** argv) {
     const std::string folder=argc>1?argv[1]:"build/native-evenness";
     std::filesystem::create_directories(folder);checked(CoInitializeEx(nullptr,COINIT_MULTITHREADED),"COM initialization");
     std::atomic<DWORD> guiId{0};HWND app=nullptr;
-    std::thread gui([&]{guiId=GetCurrentThreadId();wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW);});int result=0;
+    std::thread gui([&]{guiId=GetCurrentThreadId();wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_HIDE);});int result=0;
     try {
         for(int i=0;i<100&&!app;++i){if(guiId)EnumThreadWindows(guiId,[](HWND h,LPARAM param)->BOOL{wchar_t cls[64]{};GetClassNameW(h,cls,64);if(wcscmp(cls,L"PulseMetronome")==0){*reinterpret_cast<HWND*>(param)=h;return FALSE;}return TRUE;},reinterpret_cast<LPARAM>(&app));Sleep(50);}
         if(!app)throw std::runtime_error("Test GUI did not launch");
         Sleep(300);
-        clickEven(CycleView);clickEven(CycleView);clickEven(ToolsTab);
+        if(IsWindowVisible(app)) throw std::runtime_error("Audit window must be hidden");
         EvenCom<IMMDeviceEnumerator> enumerator;EvenCom<IMMDevice> device;
         checked(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,__uuidof(IMMDeviceEnumerator),enumerator.address()),"enumerator");checked(enumerator->GetDefaultAudioEndpoint(eRender,eMultimedia,&device.p),"output device");
         EvenCom<IPropertyStore> properties;checked(device->OpenPropertyStore(STGM_READ,&properties.p),"device properties");PROPVARIANT property{};
@@ -98,13 +97,24 @@ int main(int argc,char** argv) {
         EvenCom<IAudioSessionManager2> manager;EvenCom<ISimpleAudioVolume> session;
         checked(device->Activate(__uuidof(IAudioSessionManager2),CLSCTX_ALL,nullptr,manager.address()),"test session manager");checked(manager->GetSimpleAudioVolume(nullptr,0,&session.p),"test session");checked(session->SetMasterVolume(.15f,nullptr),"lower only test-session volume");
         std::ofstream metrics(folder+"/capture.csv");metrics<<"case,bpm,beats,unit,subdivision,poly,sound,volume,accents,frames,discontinuities,position_gaps,timestamp_errors,device_position_available,requested_playback_ms,actual_playback_ms\n";
-        auto run=[&](const std::string& name,int bpm,int beats,int unit,int sub,int poly,int sound,int volume,bool accents,int ms) {
-            fieldEven(Bpm,bpm);fieldEven(Volume,volume);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
-            fieldEven(Beats,beats);fieldEven(Groups,beats);choiceEven(Unit,unit==2?0:unit==4?1:unit==8?2:3);choiceEven(Subdivision,sub-1);fieldEven(Poly,poly);fieldEven(Mute,0);choiceEven(Sound,sound);accentsEven(accents);
+        std::ofstream levels(folder+"/levels.csv");levels<<"case,elapsed_ms,frames,control_pct,requested_pct,session_scalar,session_muted,endpoint_scalar,endpoint_muted\n";
+        auto run=[&](const std::string& name,int bpm,int beats,int unit,int sub,int poly,int sound,int volume,int ms) {
+            fieldEven(Bpm,bpm);fieldEven(Volume,volume);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
+            fieldEven(Beats,beats);choiceEven(Unit,unit==2?0:unit==4?1:unit==8?2:3);choiceEven(Subdivision,sub-1);fieldEven(Poly,poly);fieldEven(Mute,0);choiceEven(Sound,sound);
             ProcessCapture capture(folder+"/"+name);capture.collect(200);clickEven(Start);auto started=GetTickCount64();
-            std::cout<<"START "<<name<<" bpm="<<bpm<<" meter="<<beats<<'/'<<unit<<" sound="<<sound<<" gain="<<volume<<" accents="<<accents<<" playback_ms="<<ms<<std::endl;
-            capture.collect(ms);auto elapsed=GetTickCount64()-started;clickEven(Start);capture.collect(300);
-            metrics<<name<<','<<bpm<<','<<beats<<','<<unit<<','<<sub<<','<<poly<<','<<sound<<','<<volume<<','<<accents<<','<<capture.frames<<','<<capture.discontinuities<<','<<capture.gaps<<','<<capture.timestampErrors<<','<<capture.hasDevicePosition()<<','<<ms<<','<<elapsed<<'\n';metrics.flush();
+            std::cout<<"START "<<name<<" bpm="<<bpm<<" meter="<<beats<<'/'<<unit<<" sound="<<sound<<" gain="<<volume<<" accents="<<0<<" playback_ms="<<ms<<std::endl;
+            while(GetTickCount64()-started<static_cast<ULONGLONG>(ms)) {
+                int shown=std::stoi(value(Volume)), requested=audio.requestedGain();
+                float sessionLevel=0,endpointLevel=0; BOOL sm=FALSE,em=FALSE;
+                checked(session->GetMasterVolume(&sessionLevel),"read session gain");checked(session->GetMute(&sm),"read session mute");
+                checked(SystemVolume::read(endpointLevel,em),"read endpoint level");
+                levels<<name<<','<<GetTickCount64()-started<<','<<capture.frames<<','<<shown<<','<<requested<<','<<sessionLevel<<','<<sm<<','<<endpointLevel<<','<<em<<'\n';levels.flush();
+                if(!audio.running()||shown!=volume||requested!=volume||std::abs(sessionLevel-.15f)>.001f||sm)
+                    throw std::runtime_error("Unexpected change in test process levels/playback");
+                capture.collect(245);
+            }
+            auto elapsed=GetTickCount64()-started;clickEven(Start);capture.collect(300);
+            metrics<<name<<','<<bpm<<','<<beats<<','<<unit<<','<<sub<<','<<poly<<','<<sound<<','<<volume<<','<<0<<','<<capture.frames<<','<<capture.discontinuities<<','<<capture.gaps<<','<<capture.timestampErrors<<','<<capture.hasDevicePosition()<<','<<ms<<','<<elapsed<<'\n';metrics.flush();
             std::cout<<"CAPTURE "<<name<<" frames="<<capture.frames<<" elapsed_ms="<<elapsed<<" discontinuities="<<capture.discontinuities<<" gaps="<<capture.gaps<<" timestamp_errors="<<capture.timestampErrors<<std::endl;
             if(capture.discontinuities||capture.gaps||capture.timestampErrors)result=3;
         };
@@ -112,34 +122,33 @@ int main(int argc,char** argv) {
             int bpm=argc>3?std::stoi(argv[3]):160,sound=argc>4?std::stoi(argv[4]):0,gain=argc>5?std::stoi(argv[5]):200;
             if(bpm<20||bpm>300||sound<0||sound>3||gain<1||gain>400)throw std::runtime_error("Invalid long-test settings");
             // Ten full real-time minutes plus one second for capture boundaries.
-            run("ten_minute_4_4",bpm,4,4,1,0,sound,gain,false,601000);
-            run("positive_control",bpm,4,4,1,0,sound,gain,true,6000);
+            run("ten_minute_4_4",bpm,4,4,1,0,sound,gain,601000);
+        } else if(argc>2&&std::string(argv[2])=="--gain-only") {
+            for(auto [name,gain]:{std::pair{"gain100",100},{"gain200",200},{"gain400",400},{"return200",200}})
+                run(name,160,4,4,1,0,0,gain,6500);
         } else if(argc>2&&std::string(argv[2])=="--live-only") {
-            fieldEven(Bpm,137);fieldEven(Beats,7);fieldEven(Groups,7);choiceEven(Unit,3);choiceEven(Subdivision,3);fieldEven(Poly,5);fieldEven(Mute,0);choiceEven(Sound,3);fieldEven(Volume,200);accentsEven(false);
+            fieldEven(Bpm,137);fieldEven(Beats,7);choiceEven(Unit,3);choiceEven(Subdivision,3);fieldEven(Poly,5);fieldEven(Mute,0);choiceEven(Sound,3);fieldEven(Volume,200);
             ProcessCapture capture(folder+"/live");capture.collect(200);clickEven(Start);
             std::ofstream segments(folder+"/segments.csv");segments<<"case,start_frame,end_frame,bpm,beats,unit,subdivision,poly,sound,volume,accents\n";
-            auto phase=[&](const char* name,int bpm,int sound,int gain,bool accents) {
-                fieldEven(Bpm,bpm);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Bpm,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Bpm)));
-                choiceEven(Sound,sound);fieldEven(Volume,gain);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));accentsEven(accents);
+            auto phase=[&](const char* name,int bpm,int sound,int gain) {
+                fieldEven(Bpm,bpm);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Bpm,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Bpm)));
+                choiceEven(Sound,sound);fieldEven(Volume,gain);SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
                 capture.collect(2000);auto start=capture.frames;capture.collect(3000);
-                segments<<name<<','<<start<<','<<capture.frames<<','<<bpm<<",7,16,4,5,"<<sound<<','<<gain<<','<<accents<<'\n';segments.flush();
+                segments<<name<<','<<start<<','<<capture.frames<<','<<bpm<<",7,16,4,5,"<<sound<<','<<gain<<','<<0<<'\n';segments.flush();
                 std::cout<<"LIVE "<<name<<std::endl;
             };
-            phase("live137",137,3,200,false);phase("live199",199,3,200,false);phase("live300",300,3,200,false);phase("live137_return",137,3,200,false);
-            phase("live_gain400",137,3,400,false);phase("live_sound2",137,2,400,false);phase("positive_control_live",137,2,400,true);phase("live_accents_off",137,2,400,false);phase("live_restore200",137,2,200,false);
+            phase("live137",137,3,200);phase("live199",199,3,200);phase("live300",300,3,200);phase("live137_return",137,3,200);
+            phase("live_gain400",137,3,400);phase("live_sound2",137,2,400);phase("live_restore200",137,2,200);
             clickEven(Start);capture.collect(300);
             std::ofstream liveStatus(folder+"/live-status.csv");liveStatus<<"discontinuities,position_gaps,timestamp_errors,device_position_available\n"<<capture.discontinuities<<','<<capture.gaps<<','<<capture.timestampErrors<<','<<capture.hasDevicePosition()<<'\n';
             std::cout<<"LIVE capture discontinuities="<<capture.discontinuities<<" gaps="<<capture.gaps<<" timestamp_errors="<<capture.timestampErrors<<std::endl;
             if(capture.discontinuities||capture.gaps||capture.timestampErrors)result=3;
         } else {
-        run("plain120_200",120,4,4,1,0,0,200,false,12000);
-        run("plain160_200",160,4,4,1,0,0,200,false,12000);
-        for(int sound=0;sound<4;++sound)for(int gain:{200,400})run("sound"+std::to_string(sound)+"_"+std::to_string(gain),160,4,4,1,0,sound,gain,false,6000);
-        for(int poly:{0,3,5,16})run("dense_poly"+std::to_string(poly),199,7,16,4,poly,3,200,false,6000);
-        run("positive_control",120,4,4,1,0,0,200,true,6000);
-        // Explicit UI live-toggle path, followed by a stable flat segment.
-        accentsEven(false);run("after_toggle",160,4,4,1,0,0,200,false,6000);
-        run("long160",160,4,4,1,0,0,200,false,60000);
+        run("plain120_200",120,4,4,1,0,0,200,12000);
+        run("plain160_200",160,4,4,1,0,0,200,12000);
+        for(int sound=0;sound<4;++sound)for(int gain:{200,400})run("sound"+std::to_string(sound)+"_"+std::to_string(gain),160,4,4,1,0,sound,gain,6000);
+        for(int poly:{0,3,5,16})run("dense_poly"+std::to_string(poly),199,7,16,4,poly,3,200,6000);
+        run("long160",160,4,4,1,0,0,200,60000);
         }
         std::cout<<"INFO capture includes only this audit process; no microphone/system-wide capture or Windows master-volume changes"<<std::endl;
     }catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<std::endl;result=1;}

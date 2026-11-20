@@ -5,12 +5,31 @@ void require(bool ok,const char* message) { if(!ok) throw std::runtime_error(mes
 HWND item(int id) { return GetDlgItem(app,id); }
 std::wstring fieldText(int id) { wchar_t buffer[256]{}; SendMessageW(item(id),WM_GETTEXT,256,reinterpret_cast<LPARAM>(buffer)); return buffer; }
 void set(int id,const wchar_t* s) { SendMessageW(item(id),WM_SETTEXT,0,reinterpret_cast<LPARAM>(s)); }
-void click(int id) { PostMessageW(item(id),BM_CLICK,0,0); Sleep(180); }
+void click(int id) {
+    // Invalid Apply deliberately opens a modal error. Other assertions must
+    // wait for the click handler instead of racing a posted click under load.
+    if(id==Apply) PostMessageW(item(id),BM_CLICK,0,0);
+    else if(!SendMessageTimeoutW(item(id),BM_CLICK,0,0,SMTO_ABORTIFHUNG,4000,nullptr))
+        throw std::runtime_error("Native click timed out");
+    Sleep(180);
+}
 void select(int id,int index,bool list=false) { SendMessageW(item(id),list?LB_SETCURSEL:CB_SETCURSEL,index,0); SendMessageW(app,WM_COMMAND,MAKEWPARAM(id,list?LBN_SELCHANGE:CBN_SELCHANGE),reinterpret_cast<LPARAM>(item(id))); Sleep(180); }
-void screenshot(const char* path,bool composite=false) {
-    RECT r; GetWindowRect(app,&r); int w=r.right-r.left,h=r.bottom-r.top;
+void screenshot(const char* path,bool composite=false,int popup=0) {
+    bool privateDisplay=std::getenv("PULSE_PRIVATE_DISPLAY_CAPTURE") && GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version");
+    RECT r; GetClientRect(app,&r);
+    if(popup && privateDisplay) {
+        COMBOBOXINFO info{};info.cbSize=sizeof(info);GetComboBoxInfo(item(popup),&info);
+        RECT list;GetWindowRect(info.hwndList,&list);MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&list),2);
+        UnionRect(&r,&r,&list);
+    }
+    int w=r.right-r.left,h=r.bottom-r.top;
     HDC dc=GetDC(app),mem=CreateCompatibleDC(dc); HBITMAP bitmap=CreateCompatibleBitmap(dc,w,h); auto old=SelectObject(mem,bitmap);
-    PrintWindow(app,mem,2);
+    if(privateDisplay) {
+        RedrawWindow(app,nullptr,nullptr,RDW_INVALIDATE|RDW_UPDATENOW|RDW_ALLCHILDREN);Sleep(120);
+        POINT origin{r.left,r.top};ClientToScreen(app,&origin);
+        HDC screen=GetDC(nullptr);BitBlt(mem,0,0,w,h,screen,origin.x,origin.y,SRCCOPY);ReleaseDC(nullptr,screen);
+    } else {
+    PrintWindow(app,mem,PW_CLIENTONLY);
     // Wine's PrintWindow omits children. Composite their WM_PRINT output for layout inspection.
     if(composite) for(const auto& c:controls) if(IsWindowVisible(c.hwnd)) {
         RECT child; GetWindowRect(c.hwnd,&child); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&child),2);
@@ -24,6 +43,7 @@ void screenshot(const char* path,bool composite=false) {
         } else SendMessageW(c.hwnd,WM_PRINT,reinterpret_cast<WPARAM>(mem),PRF_CLIENT|PRF_ERASEBKGND|PRF_CHILDREN);
         RestoreDC(mem,saved);
     }
+    }
     BITMAPINFO info{}; info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER); info.bmiHeader.biWidth=w; info.bmiHeader.biHeight=-h; info.bmiHeader.biPlanes=1; info.bmiHeader.biBitCount=32; info.bmiHeader.biCompression=BI_RGB;
     std::vector<unsigned char> pixels(w*h*4); SelectObject(mem,old); GetDIBits(dc,bitmap,0,h,pixels.data(),&info,DIB_RGB_COLORS);
     BITMAPFILEHEADER header{}; header.bfType=0x4d42; header.bfOffBits=sizeof(header)+sizeof(info.bmiHeader); header.bfSize=header.bfOffBits+pixels.size();
@@ -31,8 +51,7 @@ void screenshot(const char* path,bool composite=false) {
     DeleteObject(bitmap); DeleteDC(mem); ReleaseDC(app,dc);
 }
 int main(int argc,char** argv) {
-    const bool baseline=argc>1&&std::string(argv[1])=="--startup-baseline";
-    const bool startupOnly=baseline||(argc>1&&std::string(argv[1])=="--startup-only");
+    const bool startupOnly=argc>1&&std::string(argv[1])=="--startup-only";
     std::atomic<bool> exited{false};
     std::atomic<DWORD> guiId{0};
     std::thread gui([&] { guiId=GetCurrentThreadId(); wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW); exited=true; });
@@ -40,45 +59,90 @@ int main(int argc,char** argv) {
     try {
         for(int i=0;i<100&&!app;++i) { if(guiId) EnumThreadWindows(guiId,[](HWND h,LPARAM)->BOOL { wchar_t cls[64]{}; GetClassNameW(h,cls,64); if(wcscmp(cls,L"PulseMetronome")==0) { app=h; return FALSE; } return TRUE; },0); Sleep(100); }
         require(app!=nullptr,"native window launches"); Sleep(300);
-        const std::wstring expectedVolume=baseline?L"70":L"200";
-        const int expectedCheck=baseline?BST_CHECKED:BST_UNCHECKED;
-        require(fieldText(Volume)==expectedVolume,"startup volume edit matches the default");
-        require(SendMessageW(item(VolumeSlider),TBM_GETPOS,0,0)==std::stoi(expectedVolume),"startup volume slider matches the default");
-        require(SendMessageW(item(Accents),BM_GETCHECK,0,0)==expectedCheck,"startup accent checkbox matches the default");
-        click(CycleView); click(CycleView); click(ToolsTab);
-        require(IsWindowVisible(item(Volume))&&IsWindowVisible(item(Accents)),"startup settings are visible in Practice tools");
-        screenshot(baseline?"docs/startup-before.bmp":"docs/startup-after.bmp",true);
-        click(RhythmTab); click(CycleView);
-        require(fieldText(Volume)==expectedVolume&&SendMessageW(item(Accents),BM_GETCHECK,0,0)==expectedCheck,"view changes preserve startup defaults");
-        if(startupOnly) {
-            click(CycleView); click(CycleView); click(ToolsTab);
-            click(Accents);
-            require(SendMessageW(item(Accents),BM_GETCHECK,0,0)!=expectedCheck,"accents remain manually configurable");
-            click(Accents);
-            set(Volume,L"150");
-            SendMessageW(app,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Volume)));
-            require(SendMessageW(item(VolumeSlider),TBM_GETPOS,0,0)==150,"manual volume still synchronizes the slider");
-            PostMessageW(app,WM_CLOSE,0,0);
-            for(int i=0;i<50&&!exited;++i) Sleep(100);
-            require(exited,"startup test closes without a confirmation prompt");
-            gui.join(); return 0;
+        require(!item(129)&&!item(106),"accent and grouping controls no longer exist");
+        require(fieldText(Volume)==L"200" && fieldText(Bpm)==L"120","starts at 120 BPM and 200% app gain");
+        auto preset=[&](int id,const wchar_t* label) {
+            HWND h=item(id);
+            int index=static_cast<int>(SendMessageW(h,CB_FINDSTRINGEXACT,-1,reinterpret_cast<LPARAM>(label)));
+            require(index>=0,"preset is in native dropdown");
+            SendMessageW(h,CB_SHOWDROPDOWN,TRUE,0);
+            require(SendMessageW(h,CB_GETDROPPEDSTATE,0,0),"native selector opens");
+            SendMessageW(h,CB_SETCURSEL,index,0);
+            SendMessageW(app,WM_COMMAND,MAKEWPARAM(id,CBN_SELENDOK),reinterpret_cast<LPARAM>(h));
+            SendMessageW(h,CB_SHOWDROPDOWN,FALSE,0);
+            require(fieldText(id)==label,"accepted preset displayed");
+        };
+        preset(Bpm,L"160"); preset(Volume,L"400");
+        require(audio.requestedGain()==400,"volume preset updates audio request");
+        SendMessageW(item(Volume),WM_MOUSEWHEEL,MAKEWPARAM(0,-WHEEL_DELTA),0);
+        require(fieldText(Volume)==L"400"&&audio.requestedGain()==400,"closed selector ignores wheel");
+        set(Volume,L"2");SendMessageW(app,WM_COMMAND,MAKEWPARAM(Volume,CBN_EDITCHANGE),reinterpret_cast<LPARAM>(item(Volume)));Sleep(350);
+        require(audio.requestedGain()==400,"partial typed gain does not reach the audio thread");
+        set(Volume,L"237");SendMessageW(app,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Volume)));
+        require(audio.requestedGain()==237,"exact custom gain commits on leaving field");
+        set(Volume,L"401");SendMessageW(app,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Volume)));
+        require(fieldText(Volume)==L"237"&&audio.requestedGain()==237,"invalid gain restores without changing audio");
+        if(std::getenv("PULSE_PRIVATE_DISPLAY_CAPTURE")) {
+            // Deliver real keyboard input only to the private Wine/Xvfb desktop.
+            preset(Volume,L"200");
+            SetForegroundWindow(app);Sleep(80);
+            COMBOBOXINFO info{};info.cbSize=sizeof(info);GetComboBoxInfo(item(Volume),&info);
+            DWORD owner=GetWindowThreadProcessId(app,nullptr);
+            require(AttachThreadInput(GetCurrentThreadId(),owner,TRUE)!=0,"test can focus private desktop combo");
+            SetFocus(info.hwndItem);
+            AttachThreadInput(GetCurrentThreadId(),owner,FALSE);
+            SendMessageW(item(Volume),CB_SHOWDROPDOWN,TRUE,0);Sleep(100);
+            INPUT keys[4]{};
+            for(auto& k:keys) k.type=INPUT_KEYBOARD;
+            keys[0].ki.wVk=keys[1].ki.wVk=VK_DOWN;
+            keys[2].ki.wVk=keys[3].ki.wVk=VK_RETURN;
+            keys[1].ki.dwFlags=keys[3].ki.dwFlags=KEYEVENTF_KEYUP;
+            SendInput(4,keys,sizeof(INPUT));Sleep(250);
+            require(!SendMessageW(item(Volume),CB_GETDROPPEDSTATE,0,0)&&audio.requestedGain()==250,"keyboard accepts next gain preset and closes dropdown");
+            SendMessageW(item(Volume),CB_SHOWDROPDOWN,TRUE,0);
+            keys[0].ki.wVk=keys[1].ki.wVk=VK_UP;
+            keys[2].ki.wVk=keys[3].ki.wVk=VK_ESCAPE;
+            SendInput(4,keys,sizeof(INPUT));Sleep(250);
+            require(audio.requestedGain()==250 && fieldText(Volume)==L"250","Escape cancels a highlighted gain change");
         }
+        preset(Bpm,L"120"); preset(Volume,L"200");
+        if(startupOnly) { PostMessageW(app,WM_CLOSE,0,0);gui.join();return 0; }
         require((GetWindowLongPtrW(app,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0,"widget starts always on top");
         require((GetWindowLongPtrW(app,GWL_STYLE)&WS_CAPTION)!=WS_CAPTION,"widget has no title bar");
         RECT tinyClient; GetClientRect(app,&tinyClient);
         require(tinyClient.right==px(TinyWidth)&&tinyClient.bottom==px(TinyHeight),"starts as a tiny DPI-scaled bar");
         require(!IsWindowVisible(item(FullEditor))&&IsWindowVisible(item(Meter)),"tiny bar shows meter without full editor");
-        for(int id:{Bpm,Meter,Start,PositionLock,MinimizeWidget,CycleView,CloseWidget}) {
+        for(int id:{Bpm,Volume,Meter,Start,PositionLock,MinimizeWidget,CycleView,CloseWidget}) {
             RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
             require(r.left>=0&&r.top>=0&&r.right<=tinyClient.right&&r.bottom<=tinyClient.bottom,"tiny control fits client area");
         }
         require(SendMessageW(item(Meter),CB_GETCOUNT,0,0)==128,"meter dropdown supports 1-32 beats and all four denominators");
         select(Meter,26); // 7/8
-        require(fieldText(Beats)==L"7"&&fieldText(Groups)==L"7","tiny meter selection updates editor and resets obsolete grouping");
+        require(fieldText(Beats)==L"7","tiny meter selection updates editor");
         select(Meter,127); // 32/16
         require(fieldText(Beats)==L"32"&&choice(Unit)==3,"tiny meter supports 32/16 boundary");
         select(Meter,13); // 4/4
         require(fieldText(Beats)==L"4","tiny meter can return to 4/4");
+        auto checkTiny=[](int dpi) {
+            RECT client{};GetClientRect(app,&client);
+            RECT target{};GetWindowRect(app,&target);
+            target.right=target.left+MulDiv(TinyWidth+2,dpi,96);target.bottom=target.top+MulDiv(TinyHeight+2,dpi,96);
+            SendMessageW(app,WM_DPICHANGED,MAKEWPARAM(dpi,dpi),reinterpret_cast<LPARAM>(&target));
+            GetClientRect(app,&client);LONG right=0;
+            for(int id:{Start,Bpm,Volume,Meter,PositionLock,CycleView,MinimizeWidget,CloseWidget}) {
+                RECT r{};GetWindowRect(item(id),&r);MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
+                require(r.left>=right&&r.right<=client.right&&r.top>=0&&r.bottom<=client.bottom,"scaled tiny controls fit without overlap");right=r.right;
+                if(id==Bpm||id==Volume) {
+                    COMBOBOXINFO info{};info.cbSize=sizeof(info);GetComboBoxInfo(item(id),&info);
+                    RECT edit{};SendMessageW(info.hwndItem,EM_GETRECT,0,reinterpret_cast<LPARAM>(&edit));
+                    HDC dc=GetDC(info.hwndItem);auto old=SelectObject(dc,reinterpret_cast<HFONT>(SendMessageW(info.hwndItem,WM_GETFONT,0,0)));
+                    SIZE digits{};GetTextExtentPoint32W(dc,L"400",3,&digits);SelectObject(dc,old);ReleaseDC(info.hwndItem,dc);
+                    require(edit.right-edit.left>=digits.cx+2,"three-digit value fits beside dropdown arrow");
+                }
+            }
+        };
+        int nativeDpi=GetDpiForWindow(app);
+        for(int dpi:{144,288,nativeDpi}) checkTiny(dpi);
         POINT header{px(12),px(20)}; ClientToScreen(app,&header);
         require(SendMessageW(app,WM_NCHITTEST,0,MAKELPARAM(header.x,header.y))==HTCAPTION,"tiny grip is draggable");
         click(PositionLock);
@@ -91,11 +155,16 @@ int main(int argc,char** argv) {
         ShowWindow(app,SW_RESTORE); Sleep(200);
         require(!IsIconic(app)&&IsWindowVisible(item(Start)),"bar can be restored from taskbar");
         screenshot("docs/tiny-bar.bmp",true);
+        if(std::getenv("PULSE_PRIVATE_DISPLAY_CAPTURE")) for(int id:{Bpm,Volume}) {
+            SendMessageW(item(id),CB_SHOWDROPDOWN,TRUE,0);Sleep(200);
+            screenshot(id==Bpm?"build/tempo-open.bmp":"build/gain-open.bmp",false,id);
+            SendMessageW(item(id),CB_SHOWDROPDOWN,FALSE,0);
+        }
         click(CycleView); // compact overlay
         RECT widgetClient; GetClientRect(app,&widgetClient);
         require(widgetClient.right==px(WidgetWidth)&&widgetClient.bottom==px(WidgetHeight),"Size cycles tiny to compact overlay");
         require(IsWindowVisible(item(FullEditor))&&!IsWindowVisible(item(Meter)),"compact overlay controls restored");
-        for(int id:{Bpm,Minus,Plus,Tap,Start,FullEditor,Opacity,PositionLock,CloseWidget,NextStep,MinimizeWidget,CycleView}) {
+        for(int id:{Bpm,Volume,Minus,Plus,Tap,Start,FullEditor,Opacity,PositionLock,CloseWidget,NextStep,MinimizeWidget,CycleView}) {
             RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
             require(r.left>=0&&r.top>=0&&r.right<=widgetClient.right&&r.bottom<=widgetClient.bottom,"compact control fits client area");
         }
@@ -117,23 +186,25 @@ int main(int argc,char** argv) {
         click(Overlay); click(Plus); require(fieldText(Bpm)==L"121","widget plus changes tempo");
         click(Minus); click(FullEditor);
         RECT restored; GetWindowRect(app,&restored);
-        require(EqualRect(&editorRect,&restored),"editor placement restored after widget round trip");
+        bool wine=GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version")!=nullptr;
+        if(wine && !EqualRect(&editorRect,&restored))
+            require(editorRect.right-editorRect.left==restored.right-restored.left && editorRect.bottom-editorRect.top==restored.bottom-restored.top,"Wine: editor size restored (known placement drift)");
+        else require(EqualRect(&editorRect,&restored),"editor placement restored after widget round trip");
         require(fieldText(102)==L"120","default tempo 120"); require(!IsWindowEnabled(item(112)),"standard mode disables sequence list");
         select(103,1); require(IsWindowEnabled(item(112)),"sequence mode enables steps"); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==3,"example has three steps");
-        select(112,1,true); require(fieldText(104)==L"7"&&fieldText(106)==L"2+2+3","selecting 7/8 loads grouping");
+        select(112,1,true); require(fieldText(104)==L"7","selecting 7/8 loads meter");
         click(CycleView); // full -> tiny
         require(choice(Meter)==26,"tiny dropdown reflects selected sequence meter");
         select(Meter,27); // 7/16: keep 2+2+3 and repeat count
-        require(fieldText(Groups)==L"2+2+3"&&fieldText(Repeats)==L"2","changing denominator preserves sequence grouping and repeats");
+        require(fieldText(Repeats)==L"2","changing denominator preserves sequence repeats");
         select(Meter,26);
         click(CycleView); click(CycleView);
-        set(106,L"3+2+2"); click(116); require(fieldText(106)==L"3+2+2","accent changes apply");
         click(115); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==4,"add step");
         click(118); require(SendMessageW(item(112),LB_GETCURSEL,0,0)==1,"move step up");
         click(119); require(SendMessageW(item(112),LB_GETCURSEL,0,0)==2,"move step down");
         click(117); require(SendMessageW(item(112),LB_GETCOUNT,0,0)==3,"remove step");
-        select(112,1,true); set(106,L"2+2+3"); click(116); set(108,L"3");
-        screenshot("docs/preview.bmp");
+        select(112,1,true); click(116); set(108,L"3");
+        screenshot("docs/preview.bmp",true);
         set(110,L"0"); click(100); Sleep(600);
         HWND dialog=FindWindowW(L"#32770",L"Audio unavailable");
         if(dialog) { std::cout<<"INFO Audio endpoint unavailable in Wine; error shown correctly"<<std::endl; PostMessageW(dialog,WM_COMMAND,IDOK,0); Sleep(200); require(IsWindowEnabled(item(102)),"audio failure restores controls"); }
@@ -153,11 +224,11 @@ int main(int argc,char** argv) {
             ShowWindow(app,SW_RESTORE); Sleep(200);
             click(CycleView); click(Opacity); click(FullEditor);
             require(fieldText(Start).find(L"Stop")!=std::wstring::npos,"returning to editor preserves playback");
-            set(Bpm,L"180"); Sleep(650);
+            preset(Bpm,L"180"); preset(Volume,L"0"); Sleep(650);
             require(fieldText(Bpm)==L"180"&&fieldText(Start).find(L"Stop")!=std::wstring::npos,"typed live tempo keeps playback running");
             click(Plus); require(fieldText(Bpm)==L"181","plus changes live tempo");
             click(Minus); require(fieldText(Bpm)==L"180","minus changes live tempo");
-            set(Bpm,L"999"); SendMessageW(app,WM_COMMAND,MAKEWPARAM(Bpm,EN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Bpm)));
+            set(Bpm,L"999"); SendMessageW(app,WM_COMMAND,MAKEWPARAM(Bpm,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(item(Bpm)));
             require(fieldText(Bpm)==L"180","invalid live tempo restores last valid value");
             click(Tap); Sleep(250); click(Tap);
             require(fieldText(Start).find(L"Stop")!=std::wstring::npos&&std::stoi(fieldText(Bpm))>=20&&std::stoi(fieldText(Bpm))<=300,"tap tempo works while playback continues");
@@ -176,13 +247,13 @@ int main(int argc,char** argv) {
         }
         RECT client; GetClientRect(app,&client);
         bool contained=true;
-        for(int id:{Start,NextStep,Bpm,Mode,Beats,Groups,Steps,Apply,Forever}) {
+        for(int id:{Start,NextStep,Bpm,Mode,Beats,Steps,Apply,Forever}) {
             RECT r; GetWindowRect(item(id),&r); MapWindowPoints(nullptr,app,reinterpret_cast<POINT*>(&r),2);
             contained=contained&&r.left>=0&&r.top>=0&&r.right<=client.right&&r.bottom<=client.bottom;
         }
         require(contained,"all primary controls fit the compact client area");
-        screenshot("docs/preview.bmp");
-        click(ToolsTab); screenshot("docs/practice-tools.bmp"); click(RhythmTab);
+        screenshot("docs/preview.bmp",true);
+        click(ToolsTab); screenshot("docs/practice-tools.bmp",true); click(RhythmTab);
         PostMessageW(app,WM_CLOSE,0,0);
         for(int i=0;i<30&&!exited;++i) Sleep(100);
         require(exited,"unsaved practice closes cleanly without a confirmation dialog");

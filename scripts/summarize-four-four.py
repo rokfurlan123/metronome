@@ -61,10 +61,12 @@ def main():
     summary, rows = summarize(case, int(capture['bpm']))
     summary.update(settings=capture, capture_seconds=int(capture['frames']) / case['rate'],
                    leading_partial_clicks_excluded=case['leading_capture_partial_clicks_excluded'])
-    control = next(c for c in analysis['cases'] if c['case'] == 'positive_control')
-    if control['energy_spread_db'] < .5:
-        raise ValueError('Known accented positive control was not detected')
-    summary['positive_control_energy_spread_db'] = control['energy_spread_db']
+    # Older runs included an in-app accent control; current analyzers use a
+    # separate synthetic fixture because no accent can be enabled in Pulse.
+    for control in (c for c in analysis['cases'] if c['case'] == 'positive_control'):
+        if control['energy_spread_db'] < .5:
+            raise ValueError('Known positive control was not detected')
+        summary['positive_control_energy_spread_db'] = control['energy_spread_db']
     if summary['between_beat_mean_spread_db'] > .05 or max(summary['per_beat_minute_mean_spread_db'].values()) > .05:
         failures.append('Numbered-beat or time-dependent emphasis detected')
     summary['failures'] = failures

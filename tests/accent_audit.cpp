@@ -42,23 +42,23 @@ int main(int argc,char** argv) {
         if(expectUniform) { worstRegular=std::max(worstRegular,m.dbSpread); if(m.dbSpread>.01) ++failures; }
     };
     for(int sound=0;sound<4;++sound) for(int volume:{70,100,200,400}) for(int bpm:{60,137,160,199,300}) for(int unit:{4,8,16}) for(int subdivision:{1,2,3,4}) {
-        pulse::Settings s; s.accents=false; s.sound=sound; s.volume=volume; s.bpm=bpm; s.subdivision=subdivision; s.simple={7,unit,1,0,{2,2,3}};
+        pulse::Settings s; s.sound=sound; s.volume=volume; s.bpm=bpm; s.subdivision=subdivision; s.simple={7,unit,1,0};
         run("regular",s,48000,true);
     }
     for(int sound=0;sound<4;++sound) for(int rate:{44100,48000,96000}) {
-        pulse::Settings s; s.accents=false; s.sound=sound; s.volume=400; s.bpm=160;
+        pulse::Settings s; s.sound=sound; s.volume=400; s.bpm=160;
         run("reported_setup",s,rate,true);
-        s.sequence=true; s.bars={{4,4,1,0,{4}},{7,4,1,0,{2,2,3}},{3,4,1,0,{1,2}}};
+        s.sequence=true; s.bars={{4,4,1,0},{7,4,1,0},{3,4,1,0}};
         run("mixed_meter",s,rate,true);
-        s.sequence=false; s.accents=true; run("positive_accent_control",s,rate,false);
-        s.accents=false; s.poly=3; run("second_pulse",s,rate,true);
+        s.sequence=false;
+        s.poly=3; run("second_pulse",s,rate,true);
     }
     for(int sound=0;sound<4;++sound) for(int bpm:{20,300}) for(int unit:{2,16}) for(int sub:{1,4}) {
-        pulse::Settings s; s.accents=false; s.sound=sound; s.volume=400; s.bpm=bpm; s.subdivision=sub; s.simple={1,unit,1,0,{1}};
+        pulse::Settings s; s.sound=sound; s.volume=400; s.bpm=bpm; s.subdivision=sub; s.simple={1,unit,1,0};
         run("range_boundary",s,48000,true);
     }
     for(int sound=0;sound<4;++sound) {
-        pulse::Settings s; s.accents=false; s.sound=sound; s.volume=400; s.bpm=300; s.simple={32,4,1,0,{7,9,16}};
+        pulse::Settings s; s.sound=sound; s.volume=400; s.bpm=300; s.simple={32,4,1,0};
         run("32_beat_meter",s,48000,true);
     }
     std::cout<<"Rendered "<<cases<<" complete-stream cases. Worst regular unaccented energy spread: "<<worstRegular<<" dB. Cases over 0.01 dB: "<<failures<<". Detailed CSV written.\n";

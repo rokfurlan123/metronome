@@ -64,7 +64,7 @@ int main(int argc,char** argv) {
     std::thread gui([]{wWinMain(GetModuleHandleW(nullptr),nullptr,nullptr,SW_SHOW);});
     int result=0;
     try {
-        for(int i=0;i<100;++i) { if(window&&control(Accents))break;Sleep(50); } Sleep(300); SendMessageW(control(FullEditor),BM_CLICK,0,0);
+        for(int i=0;i<100;++i) { if(window&&control(Volume))break;Sleep(50); } Sleep(300); SendMessageW(control(FullEditor),BM_CLICK,0,0);
         AuditCom<IMMDeviceEnumerator> enumerator; AuditCom<IMMDevice> device;
         checkAudit(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,__uuidof(IMMDeviceEnumerator),enumerator.address()),"enumerator");
         checkAudit(enumerator->GetDefaultAudioEndpoint(eRender,eMultimedia,&device.p),"endpoint");
@@ -83,13 +83,10 @@ int main(int argc,char** argv) {
             markers<<name<<','<<start<<','<<capture.frames<<','<<accents<<','<<sound<<','<<volume<<",160,"<<poly<<','<<sub<<'\n';
             std::cout<<"Captured "<<name<<": "<<capture.frames-start<<" frames\n"<<std::flush;
         };
-        record("accent_on_control",5000,1,0,200);
-        clickAudit(Accents); // Actual UI command updates the live audio worker.
-        capture.collect(700);
         record("live_off_clean_200",6000,0,0,200);
         for(int sound=0;sound<4;++sound) {
             chooseAudit(Sound,sound); field(Volume,L"400");
-            SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
+            SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
             capture.collect(700);
             record("off_sound_"+std::to_string(sound)+"_400",5000,0,sound,400);
         }
@@ -97,8 +94,8 @@ int main(int argc,char** argv) {
         record("off_full_poly3",5000,0,3,400,3);
         clickAudit(Start); field(Poly,L"0"); chooseAudit(Subdivision,3); clickAudit(Start); capture.collect(700);
         record("off_full_sub4",5000,0,3,400,0,4);
-        clickAudit(Start); chooseAudit(Subdivision,0); clickAudit(Accents); clickAudit(Start); capture.collect(700);
-        record("accents_restored_full_400",5000,1,3,400);
+        clickAudit(Start); chooseAudit(Subdivision,0); clickAudit(Start); capture.collect(700);
+        record("even_full_400",5000,0,3,400);
         clickAudit(Start); capture.collect(200);
         std::cout<<"Capture complete: rate="<<capture.rate<<", discontinuities="<<capture.discontinuities<<", position_gaps="<<capture.positionGaps<<"\n";
         if(capture.discontinuities||capture.positionGaps) result=3;

@@ -52,9 +52,9 @@ int main() {
         require(value(Volume)==L"400","slider reaches 400 percent during playback");
         dragVolume(false);
         require(value(Volume)==L"0","slider reaches zero during playback");
-        setField(Volume,L"150"); Sleep(600);
+        setField(Volume,L"150"); SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume)));
         require(SendMessageW(control(VolumeSlider),TBM_GETPOS,0,0)==150,"typed boost synchronizes slider");
-        setField(Volume,L"401"); SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,EN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume))); Sleep(200);
+        setField(Volume,L"401"); SendMessageW(window,WM_COMMAND,MAKEWPARAM(Volume,CBN_KILLFOCUS),reinterpret_cast<LPARAM>(control(Volume))); Sleep(200);
         require(value(Volume)==L"150","invalid volume restores previous level");
         require(beatsObserved>=4&&value(Start).find(L"Stop")!=std::wstring::npos,"audio-clock beats continue through volume changes");
         SendMessageW(control(Start),BM_CLICK,0,0); Sleep(200);

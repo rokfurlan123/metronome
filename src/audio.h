@@ -15,7 +15,6 @@ class Audio {
     HANDLE stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     std::atomic<bool> active{false};
     std::atomic<bool> advance{false};
-    std::atomic<bool> requestedAccents{pulse::Settings{}.accents};
     std::atomic<int> requestedBpm{120};
     std::atomic<int> requestedVolume{pulse::Settings{}.volume};
     std::atomic<int> requestedSound{0};
@@ -58,7 +57,7 @@ class Audio {
                     for (UINT32 i = 0; i < frames; ++i, ++frame) {
                         if (index == events.size() && frame >= std::llround(timeline.nextBarFrame())) { if (advance.exchange(false)) timeline.advanceStep(); events = timeline.nextBar(); index = 0; }
                         while (index < events.size() && events[index].frame <= frame) {
-                            if (!events[index].poly && events[index].accent > 0) {
+                            if (!events[index].poly && events[index].mainBeat) {
                                 int bpm = requestedBpm.load(std::memory_order_relaxed);
                                 if (bpm != timeline.config().bpm) {
                                     timeline.changeTempo(bpm, events, index);
@@ -67,10 +66,9 @@ class Audio {
                             }
                             settings.sound = requestedSound.load(std::memory_order_relaxed);
                             settings.volume = requestedVolume.load(std::memory_order_relaxed);
-                            settings.accents = requestedAccents.load(std::memory_order_relaxed);
                             int untilNext=pulse::framesUntilNextClick(events,index,static_cast<int64_t>(std::llround(timeline.nextBarFrame())));
                             const auto& e = events[index++]; synth.trigger(e, settings,untilNext);
-                            if (!e.poly && e.accent > 0) visual.push_back(e);
+                            if (!e.poly && e.mainBeat) visual.push_back(e);
                         }
                         float value = synth.sample(); samples[i * 2] = value; samples[i * 2 + 1] = value;
                     }
@@ -105,11 +103,11 @@ public:
     bool running() const { return active; }
     void nextStep() { if (active) advance = true; }
     void setSound(int sound) { requestedSound.store(std::clamp(sound,0,3),std::memory_order_relaxed); }
+    int requestedGain() const { return requestedVolume.load(std::memory_order_relaxed); }
     void setVolume(int volume) { requestedVolume.store(std::clamp(volume,0,400),std::memory_order_relaxed); }
-    void setAccents(bool enabled) { requestedAccents.store(enabled,std::memory_order_relaxed); }
     void setTempo(int bpm) { if (bpm >= 20 && bpm <= 300) requestedBpm.store(bpm,std::memory_order_relaxed); }
     void start(HWND window, const pulse::Settings& settings) {
-        stop(); ResetEvent(stopEvent); advance = false; requestedBpm = settings.bpm; requestedAccents = settings.accents; requestedVolume = settings.volume; requestedSound = settings.sound; active = true;
+        stop(); ResetEvent(stopEvent); advance = false; requestedBpm = settings.bpm; requestedVolume = settings.volume; requestedSound = settings.sound; active = true;
         try { worker = std::thread([=, this] { render(window, settings); }); }
         catch (...) { active = false; throw; }
     }
