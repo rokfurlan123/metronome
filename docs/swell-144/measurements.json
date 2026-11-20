@@ -1,0 +1,256 @@
+{
+  "scope": "24 s per sound, 144 BPM, 4/4, 400 percent app gain, 48 kHz; test process only, reduced session volume",
+  "captures": [
+    {
+      "case": "sound0",
+      "bpm": "144",
+      "beats": "4",
+      "unit": "4",
+      "subdivision": "1",
+      "poly": "0",
+      "sound": "0",
+      "volume": "400",
+      "accents": "0",
+      "frames": "1175520",
+      "discontinuities": "0",
+      "position_gaps": "0",
+      "timestamp_errors": "0",
+      "device_position_available": "0",
+      "requested_playback_ms": "24000",
+      "actual_playback_ms": "24000"
+    },
+    {
+      "case": "sound1",
+      "bpm": "144",
+      "beats": "4",
+      "unit": "4",
+      "subdivision": "1",
+      "poly": "0",
+      "sound": "1",
+      "volume": "400",
+      "accents": "0",
+      "frames": "1175520",
+      "discontinuities": "0",
+      "position_gaps": "0",
+      "timestamp_errors": "0",
+      "device_position_available": "0",
+      "requested_playback_ms": "24000",
+      "actual_playback_ms": "24000"
+    },
+    {
+      "case": "sound2",
+      "bpm": "144",
+      "beats": "4",
+      "unit": "4",
+      "subdivision": "1",
+      "poly": "0",
+      "sound": "2",
+      "volume": "400",
+      "accents": "0",
+      "frames": "1175040",
+      "discontinuities": "0",
+      "position_gaps": "0",
+      "timestamp_errors": "0",
+      "device_position_available": "0",
+      "requested_playback_ms": "24000",
+      "actual_playback_ms": "24000"
+    },
+    {
+      "case": "sound3",
+      "bpm": "144",
+      "beats": "4",
+      "unit": "4",
+      "subdivision": "1",
+      "poly": "0",
+      "sound": "3",
+      "volume": "400",
+      "accents": "0",
+      "frames": "1175520",
+      "discontinuities": "0",
+      "position_gaps": "0",
+      "timestamp_errors": "0",
+      "device_position_available": "0",
+      "requested_playback_ms": "24000",
+      "actual_playback_ms": "24000"
+    }
+  ],
+  "telemetry_samples": 384,
+  "sampled_ranges": {
+    "control_pct": [
+      400.0,
+      400.0
+    ],
+    "requested_pct": [
+      400.0,
+      400.0
+    ],
+    "session_scalar": [
+      0.15,
+      0.15
+    ],
+    "endpoint_scalar": [
+      1.0,
+      1.0
+    ],
+    "session_muted": [
+      0.0,
+      0.0
+    ],
+    "endpoint_muted": [
+      0.0,
+      0.0
+    ]
+  },
+  "cases": [
+    {
+      "clicks": 57,
+      "energy_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "max_sample_difference": 0.0,
+      "minimum_correlation": 0.9999999999999994,
+      "max_relative_spectral_error": 0.0,
+      "centroid_spread_hz": 0.0,
+      "interval_range_frames": [
+        20000,
+        20000
+      ],
+      "case": "sound0",
+      "rate": 48000,
+      "alignment_offset_frames": 11104,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 0,
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      },
+      "measured_interval_range_frames": [
+        20000,
+        20000
+      ]
+    },
+    {
+      "clicks": 56,
+      "energy_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "max_sample_difference": 0.0,
+      "minimum_correlation": 1.0,
+      "max_relative_spectral_error": 0.0,
+      "centroid_spread_hz": 0.0,
+      "interval_range_frames": [
+        20000,
+        20000
+      ],
+      "case": "sound1",
+      "rate": 48000,
+      "alignment_offset_frames": 10624,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 1,
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      },
+      "measured_interval_range_frames": [
+        20000,
+        20000
+      ]
+    },
+    {
+      "clicks": 57,
+      "energy_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "max_sample_difference": 0.0,
+      "minimum_correlation": 1.0000000000000013,
+      "max_relative_spectral_error": 0.0,
+      "centroid_spread_hz": 0.0,
+      "interval_range_frames": [
+        20000,
+        20000
+      ],
+      "case": "sound2",
+      "rate": 48000,
+      "alignment_offset_frames": 11104,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 0,
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      },
+      "measured_interval_range_frames": [
+        20000,
+        20000
+      ]
+    },
+    {
+      "clicks": 56,
+      "energy_spread_db": 0.0,
+      "peak_spread_db": 0.0,
+      "max_sample_difference": 0.0,
+      "minimum_correlation": 1.0,
+      "max_relative_spectral_error": 0.0,
+      "centroid_spread_hz": 0.0,
+      "interval_range_frames": [
+        20000,
+        20000
+      ],
+      "case": "sound3",
+      "rate": 48000,
+      "alignment_offset_frames": 10624,
+      "stereo_max_difference": 0.0,
+      "leading_capture_partial_clicks_excluded": 1,
+      "capture_counters": {
+        "discontinuities": 0,
+        "timestamp_errors": 0,
+        "position_gaps": null,
+        "device_position_available": false
+      },
+      "measured_interval_range_frames": [
+        20000,
+        20000
+      ]
+    }
+  ],
+  "failures": [],
+  "ffmpeg": {
+    "cases": [
+      {
+        "case": "sound0",
+        "clicks": 57,
+        "rms_spread_db": 0.0,
+        "peak_spread_db": 0.0,
+        "nan_count": 0.0,
+        "inf_count": 0.0
+      },
+      {
+        "case": "sound1",
+        "clicks": 56,
+        "rms_spread_db": 0.0,
+        "peak_spread_db": 0.0,
+        "nan_count": 0.0,
+        "inf_count": 0.0
+      },
+      {
+        "case": "sound2",
+        "clicks": 57,
+        "rms_spread_db": 0.0,
+        "peak_spread_db": 0.0,
+        "nan_count": 0.0,
+        "inf_count": 0.0
+      },
+      {
+        "case": "sound3",
+        "clicks": 56,
+        "rms_spread_db": 0.0,
+        "peak_spread_db": 0.0,
+        "nan_count": 0.0,
+        "inf_count": 0.0
+      }
+    ],
+    "failures": []
+  }
+}

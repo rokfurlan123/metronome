@@ -1,13 +1,13 @@
-param([ValidatePattern('^build/[A-Za-z0-9_-]+$')][string]$OutputDirectory='build/native-evenness', [switch]$Live, [switch]$GainSweep,
+param([ValidatePattern('^build/[A-Za-z0-9_-]+$')][string]$OutputDirectory='build/native-evenness', [switch]$Live, [switch]$GainSweep, [switch]$SoundSweep,
       [switch]$TenMinutes, [ValidateRange(20,300)][int]$Bpm=160,
       [ValidateRange(0,3)][int]$Sound=0, [ValidateRange(1,400)][int]$Gain=200)
 $ErrorActionPreference='Stop'
-if(([int]$Live.IsPresent + [int]$TenMinutes.IsPresent + [int]$GainSweep.IsPresent) -gt 1){throw 'Choose a single test mode.'}
+if(([int]$Live.IsPresent + [int]$TenMinutes.IsPresent + [int]$GainSweep.IsPresent + [int]$SoundSweep.IsPresent) -gt 1){throw 'Choose a single test mode.'}
 $root=Split-Path -Parent $PSScriptRoot
 $start=New-Object System.Diagnostics.ProcessStartInfo
 $start.FileName=Join-Path $root 'build\windows_evenness_audit.exe'
 $start.WorkingDirectory=$root
-$start.Arguments=$OutputDirectory + $(if($TenMinutes){" --long-only $Bpm $Sound $Gain"}elseif($Live){' --live-only'}elseif($GainSweep){' --gain-only'}else{''})
+$start.Arguments=$OutputDirectory + $(if($TenMinutes){" --long-only $Bpm $Sound $Gain"}elseif($SoundSweep){" --sound-sweep $Bpm $Gain"}elseif($Live){' --live-only'}elseif($GainSweep){' --gain-only'}else{''})
 $start.UseShellExecute=$false
 $start.CreateNoWindow=$true
 $start.RedirectStandardOutput=$true

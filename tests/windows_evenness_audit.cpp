@@ -91,6 +91,11 @@ int main(int argc,char** argv) {
         if(IsWindowVisible(app)) throw std::runtime_error("Audit window must be hidden");
         EvenCom<IMMDeviceEnumerator> enumerator;EvenCom<IMMDevice> device;
         checked(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,__uuidof(IMMDeviceEnumerator),enumerator.address()),"enumerator");checked(enumerator->GetDefaultAudioEndpoint(eRender,eMultimedia,&device.p),"output device");
+        EvenCom<IAudioClient> engine;
+        checked(device->Activate(__uuidof(IAudioClient),CLSCTX_ALL,nullptr,engine.address()),"inspect endpoint format");
+        WAVEFORMATEX* format=nullptr;checked(engine->GetMixFormat(&format),"get mix format");
+        std::cout<<"INFO endpoint mix "<<format->nSamplesPerSec<<" Hz, "<<format->nChannels<<" channels, "<<format->wBitsPerSample<<" bits"<<std::endl;
+        CoTaskMemFree(format);
         EvenCom<IPropertyStore> properties;checked(device->OpenPropertyStore(STGM_READ,&properties.p),"device properties");PROPVARIANT property{};
         const PROPERTYKEY effectsKey{{0x1da5d803,0xd492,0x4edd,{0x8c,0x23,0xe0,0xc0,0xff,0xee,0x7f,0x0e}},5};
         if(SUCCEEDED(properties->GetValue(effectsKey,&property))) {std::cout<<"INFO endpoint Disable_SysFx vt="<<property.vt;if(property.vt==VT_UI4)std::cout<<" value="<<property.ulVal;std::cout<<std::endl;PropVariantClear(&property);}
@@ -123,6 +128,11 @@ int main(int argc,char** argv) {
             if(bpm<20||bpm>300||sound<0||sound>3||gain<1||gain>400)throw std::runtime_error("Invalid long-test settings");
             // Ten full real-time minutes plus one second for capture boundaries.
             run("ten_minute_4_4",bpm,4,4,1,0,sound,gain,601000);
+        } else if(argc==5&&std::string(argv[2])=="--sound-sweep") {
+            int bpm=std::stoi(argv[3]),gain=std::stoi(argv[4]);
+            if(bpm<20||bpm>300||gain<1||gain>400)throw std::runtime_error("Invalid sweep settings");
+            for(int sound=0;sound<4;++sound)
+                run("sound"+std::to_string(sound),bpm,4,4,1,0,sound,gain,24000);
         } else if(argc>2&&std::string(argv[2])=="--gain-only") {
             for(auto [name,gain]:{std::pair{"gain100",100},{"gain200",200},{"gain400",400},{"return200",200}})
                 run(name,160,4,4,1,0,0,gain,6500);
